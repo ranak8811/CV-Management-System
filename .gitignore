@@ -27,6 +27,9 @@ dist-ssr
 Instructions/*
 Necessary_Files/*
 
+# Prisma files
+server/src/generated/prisma
+
 # Project env files
 client/.env*
 server/.env*

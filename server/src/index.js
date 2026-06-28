@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import { prisma } from "./config/db.js";
 
 dotenv.config();
 
@@ -13,6 +14,16 @@ app.use(express.json());
 
 app.get("/", (req, res) => {
   res.json({ message: "CV Management System Server is running successfully!" });
+});
+
+app.get("/test-db", async (req, res) => {
+  try {
+    const users = await prisma.user.findMany();
+    res.json({ success: true, count: users.length, users });
+  } catch (error) {
+    console.error("Database connection error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 app.listen(PORT, () => {
