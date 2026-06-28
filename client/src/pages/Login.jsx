@@ -1,15 +1,15 @@
-import { Navigate, useNavigate } from "react-router-dom";
-import useAuth from "../hooks/useAuth";
-import { toast } from "react-hot-toast";
-import api from "../utils/api";
 import { GoogleLogin } from "@react-oauth/google";
+import useAuth from "../hooks/useAuth";
+import { useNavigate, Navigate } from "react-router-dom";
+import api from "../utils/api";
+import toast from "react-hot-toast";
 
 const Login = () => {
   const { user, handleLoginSuccess } = useAuth();
   const navigate = useNavigate();
 
   if (user) {
-    return <Navigate to={"/"} replace />;
+    return <Navigate to="/" replace />;
   }
 
   const handleGoogleSuccess = async (credentialResponse) => {
@@ -20,6 +20,7 @@ const Login = () => {
 
       if (res.data.success) {
         handleLoginSuccess(res.data.token, res.data.user);
+        toast.success("Successfully logged in with Google!");
         navigate("/");
       } else {
         toast.error(res.data.message || "Google Login Failed");
@@ -34,7 +35,6 @@ const Login = () => {
 
   const handleGitHubLogin = () => {
     const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID;
-
     const redirectUri = `${window.location.origin}/auth/github/callback`;
     window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=user:email`;
   };
@@ -42,7 +42,7 @@ const Login = () => {
   return (
     <div className="flex items-center justify-center h-screen bg-gray-100">
       <div className="border border-gray-300 p-8 rounded-md bg-white w-80 text-center">
-        <h2 className="text-xl font-bold mb-6 text-gray-700">Sing In</h2>
+        <h2 className="text-xl font-bold mb-6 text-gray-700">Sign In</h2>
 
         <div className="flex justify-center mb-4">
           <GoogleLogin
@@ -55,10 +55,10 @@ const Login = () => {
         <p className="my-2 text-gray-400 text-xs">- OR -</p>
 
         <button
-          className="w-full py-2 bg-gray-800 text-white rounded font-bold text-sm hover:bg-gray-700"
           onClick={handleGitHubLogin}
+          className="w-full py-2 bg-gray-800 text-white rounded font-bold text-sm hover:bg-gray-700"
         >
-          Sign in with Github
+          Sign in with GitHub
         </button>
       </div>
     </div>

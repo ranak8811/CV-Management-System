@@ -85,6 +85,7 @@ const githubLogin = async (req, res) => {
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
+          "User-Agent": "CV-Management-System",
         },
         body: JSON.stringify({
           client_id: process.env.GITHUB_CLIENT_ID,
@@ -95,38 +96,81 @@ const githubLogin = async (req, res) => {
     );
 
     const tokenData = await tokenResponse.json();
+
+    if (tokenData.error) {
+      console.error("GitHub token exchange error:", tokenData);
+      return res.status(400).json({
+        success: false,
+        message:
+          tokenData.error_description || "GitHub OAuth code exchange failed",
+      });
+    }
+
     const accessToken = tokenData.access_token;
 
     if (!accessToken) {
       return res.status(400).json({
         success: false,
-        message: "Invalid code or token exchange failed",
+        message: "Access token not found",
       });
     }
 
     const userResponse = await fetch("https://api.github.com/user", {
       headers: {
-        Authorization: `token ${accessToken}`,
+        Authorization: `Bearer ${accessToken}`,
+        "User-Agent": "CV-Management-System",
       },
     });
 
+    if (!userResponse.ok) {
+      const errorText = await userResponse.text();
+      console.error(
+        `Failed to fetch GitHub user profile. Status: ${userResponse.status}, Error: ${errorText}`,
+      );
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch user profile from GitHub",
+      });
+    }
+
     const userData = await userResponse.json();
 
-    const emailsResponse = await fetch("https://api.github.com/user/emails", {
-      headers: { Authorization: `token ${accessToken}` },
-    });
-
-    const emailsData = await emailsResponse.json();
-
-    const primaryEmailObj =
-      emailsData.find((email) => email.primary) || emailsData[0];
-    const email = primaryEmailObj ? primaryEmailObj.email : null;
+    let email = userData.email;
 
     if (!email) {
-      return res.status(400).json({
-        success: false,
-        message: "GitHub account must have an email",
+      const emailsResponse = await fetch("https://api.github.com/user/emails", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "User-Agent": "CV-Management-System",
+        },
       });
+
+      if (!emailsResponse.ok) {
+        const errorText = await emailsResponse.text();
+        console.error(
+          `Failed to fetch GitHub user emails. Status: ${emailsResponse.status}, Response: ${errorText}`,
+        );
+        return res.status(500).json({
+          success: false,
+          message: "Failed to fetch emails from GitHub",
+        });
+      }
+
+      const emailsData = await emailsResponse.json();
+
+      if (Array.isArray(emailsData)) {
+        const primaryEmailObj =
+          emailsData.find((email) => email.primary) || emailsData[0];
+        email = primaryEmailObj ? primaryEmailObj.email : null;
+      } else {
+        console.error("GitHub emails response is not an array:", emailsData);
+      }
+    }
+
+    if (!email) {
+      return res
+        .status(400)
+        .json({ success: false, message: "GitHub account must have an email" });
     }
 
     let user = await prisma.user.findUnique({
