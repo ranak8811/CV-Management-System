@@ -12,6 +12,8 @@ datasource db {
   provider = "postgresql"
 }
 
+// ----------------------- User schema starts here  ----------------------
+
 enum Role {
   CANDIDATE
   RECRUITER
@@ -19,44 +21,51 @@ enum Role {
 }
 
 model User {
-  id String @id @default(cuid())
-  email String @unique
-  name String?
-  role Role @default(CANDIDATE)
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      Role     @default(CANDIDATE)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  version Int @default(1)
+  version   Int      @default(1)
 
   userAttributes UserAttributeValue[]
 }
 
+// ----------------------- User schema ends here  ----------------------
+
+// ----------------------- Attribute Library schema starts here  ----------------------
+
 enum AttributeType {
-  STRING      
-  TEXT        
-  IMAGE       
-  NUMERIC     
-  DATE        
-  PERIOD      
-  BOOLEAN     
+  STRING
+  TEXT
+  IMAGE
+  NUMERIC
+  DATE
+  PERIOD
+  BOOLEAN
   DROPDOWN
 }
 
 model Attribute {
-  id String @id @default(cuid())
-  category String
-  name String @unique
-  type AttributeType
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        String        @id @default(cuid())
+  category  String
+  name      String        @unique
+  type      AttributeType
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 
-  options AttributeOption[]
+  options    AttributeOption[]
   userValues UserAttributeValue[]
+
+  positionAttributes PositionAttribute[]
+  accessRules        AccessRule[]
 }
 
 model AttributeOption {
-  id String @id @default(cuid())
+  id          String @id @default(cuid())
   attributeId String
-  value String
+  value       String
 
   attribute Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
 
@@ -64,15 +73,72 @@ model AttributeOption {
 }
 
 model UserAttributeValue {
-  id String @id @default(cuid())
-  userId String
+  id          String   @id @default(cuid())
+  userId      String
   attributeId String
-  value String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  value       String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   attribute Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
 
   @@unique([userId, attributeId])
 }
+
+// ----------------------- Attribute Library schema ends here  ----------------------
+
+// ----------------------- Position & Access Rule schema starts here  ----------------------
+
+enum FilterOperator {
+  EQUALS
+  GREATER_THAN
+  LESS_THAN
+  CONTAINS
+  IS_CHECKED
+}
+
+model Position {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  isPublic    Boolean  @default(true)
+  maxProjects Int      @default(3)
+  projectTags String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  version     Int      @default(1)
+
+  positionAttributes PositionAttribute[]
+  accessRules        AccessRule[]
+}
+
+model PositionAttribute {
+  id          String @id @default(cuid())
+  positionId  String
+  attributeId String
+  order       Int    @default(0)
+
+  position  Position  @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  attribute Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  @@unique([positionId, attributeId])
+}
+
+model AccessRule {
+  id          String         @id @default(cuid())
+  positionId  String
+  attributeId String
+  operator    FilterOperator
+  value       String
+
+  position  Position  @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  attribute Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  @@unique([positionId, attributeId])
+}
+
+// ----------------------- Position & Access Rule schema ends here  ----------------------
+
+// -----------------------  starts here  ----------------------
+// -----------------------  ends here  ----------------------
