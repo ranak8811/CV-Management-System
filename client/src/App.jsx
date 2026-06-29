@@ -3,6 +3,8 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 import { AuthProvider } from "./providers/AuthProvider";
 import { router } from "./router/router";
 import { Toaster } from "react-hot-toast";
+import { LanguageProvider } from "./providers/LanguageProvider";
+import { ThemeProvider } from "./providers/ThemeProvider";
 
 const App = () => {
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -10,9 +12,13 @@ const App = () => {
   return (
     <GoogleOAuthProvider clientId={googleClientId}>
       <AuthProvider>
-        <RouterProvider router={router} />
+        <LanguageProvider>
+          <ThemeProvider>
+            <RouterProvider router={router} />
 
-        <Toaster position="top-center" reverseOrder={false} />
+            <Toaster position="top-center" reverseOrder={false} />
+          </ThemeProvider>
+        </LanguageProvider>
       </AuthProvider>
     </GoogleOAuthProvider>
   );
