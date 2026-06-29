@@ -1,8 +1,10 @@
 import { createBrowserRouter } from "react-router-dom";
 import RootLayout from "../layouts/RootLayout";
 import AuthLayout from "../layouts/AuthLayout";
+import DashboardLayout from "../layouts/DashboardLayout";
 import ErrorPage from "../components/ErrorPage";
 import ProtectedRoute from "../routes/ProtectedRoute";
+import Home from "../pages/Home/Home";
 import Dashboard from "../pages/Dashboard/Dashboard";
 import Login from "../pages/Login";
 import GitHubCallback from "../components/GitHubCallback";
@@ -15,11 +17,7 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: (
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        ),
+        Component: Home,
       },
     ],
   },
@@ -29,11 +27,25 @@ export const router = createBrowserRouter([
     children: [
       {
         path: "login",
-        element: <Login />,
+        Component: Login,
       },
       {
         path: "auth/github/callback",
-        element: <GitHubCallback />,
+        Component: GitHubCallback,
+      },
+    ],
+  },
+  {
+    path: "/dashboard",
+    element: (
+      <ProtectedRoute>
+        <DashboardLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        Component: Dashboard,
       },
     ],
   },
