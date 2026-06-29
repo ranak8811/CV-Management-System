@@ -26,4 +26,53 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   version Int @default(1)
+
+  userAttributes UserAttributeValue[]
+}
+
+enum AttributeType {
+  STRING      
+  TEXT        
+  IMAGE       
+  NUMERIC     
+  DATE        
+  PERIOD      
+  BOOLEAN     
+  DROPDOWN
+}
+
+model Attribute {
+  id String @id @default(cuid())
+  category String
+  name String @unique
+  type AttributeType
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  options AttributeOption[]
+  userValues UserAttributeValue[]
+}
+
+model AttributeOption {
+  id String @id @default(cuid())
+  attributeId String
+  value String
+
+  attribute Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  @@unique([attributeId, value])
+}
+
+model UserAttributeValue {
+  id String @id @default(cuid())
+  userId String
+  attributeId String
+  value String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attribute Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, attributeId])
 }
