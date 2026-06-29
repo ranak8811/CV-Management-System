@@ -29,7 +29,11 @@ model User {
   updatedAt DateTime @updatedAt
   version   Int      @default(1)
 
-  userAttributes UserAttributeValue[]
+  userAttributes  UserAttributeValue[]
+  projects        Project[]
+  cvs             CV[]
+  discussionPosts DiscussionPost[]
+  cvLikes         CVLike[]
 }
 
 // ----------------------- User schema ends here  ----------------------
@@ -111,6 +115,9 @@ model Position {
 
   positionAttributes PositionAttribute[]
   accessRules        AccessRule[]
+
+  cvs             CV[]
+  discussionPosts DiscussionPost[]
 }
 
 model PositionAttribute {
@@ -140,5 +147,62 @@ model AccessRule {
 
 // ----------------------- Position & Access Rule schema ends here  ----------------------
 
-// -----------------------  starts here  ----------------------
-// -----------------------  ends here  ----------------------
+// ----------------------- cv project social schema starts here  ----------------------
+
+model Project {
+  id          String    @id @default(cuid())
+  userId      String
+  name        String
+  description String
+  startDate   DateTime
+  endDate     DateTime?
+  tags        String[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CV {
+  id          String   @id @default(cuid())
+  candidateId String
+  positionId  String
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  candidate User     @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  position  Position @relation(fields: [positionId], references: [id], onDelete: Cascade)
+
+  likes CVLike[]
+
+  @@unique([candidateId, positionId])
+}
+
+model DiscussionPost {
+  id         String   @id @default(cuid())
+  positionId String
+  userId     String
+  content    String
+  createdAt  DateTime @default(now())
+
+  position Position @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CVLike {
+  id        String   @id @default(cuid())
+  cvId      String
+  userId    String
+  createdAt DateTime @default(now())
+
+  cv   CV   @relation(fields: [cvId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([cvId, userId])
+}
+
+// ----------------------- cv project social schema ends here  ----------------------
+
+// -----------------------  schema starts here  ----------------------
+// -----------------------  schema ends here  ----------------------
