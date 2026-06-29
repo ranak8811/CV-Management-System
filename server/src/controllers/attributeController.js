@@ -85,4 +85,94 @@ const getAttributes = async (req, res) => {
   }
 };
 
-export { createAttribute, getAttributes };
+const updateAttribute = async (req, res) => {
+  const { id } = req.params;
+
+  const { category, name, options } = req.body;
+
+  try {
+    const attribute = await prisma.attribute.findUnique({
+      where: { id },
+      include: { options: true },
+    });
+
+    if (!attribute) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Attribute not found" });
+    }
+
+    if (name && name !== attribute.name) {
+      const existing = await prisma.attribute.findUnique({
+        where: { name },
+      });
+
+      if (existing) {
+        return res.status(400).json({
+          success: false,
+          message: "Attribute name must be globally unique",
+        });
+      }
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.attribute.update({
+        where: { id },
+        data: {
+          name: name || attribute.category,
+          category: category || attribute.category,
+        },
+      });
+
+      if (options.length > 0) {
+        await tx.attributeOption.createMany({
+          data: options.map((opt) => ({
+            attributeId: id,
+            value: opt.trim(),
+          })),
+        });
+      }
+    });
+
+    const updateData = await prisma.attribute.findUnique({
+      where: { id },
+      include: { options: true },
+    });
+
+    res.json({ success: true, data: updatedData });
+  } catch (error) {
+    console.error("Update attribute error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to update attribute" });
+  }
+};
+
+const deleteAttribute = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const attribute = await prisma.attribute.findUnique({
+      where: { id },
+    });
+
+    if (!attribute) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Attribute not found" });
+    }
+
+    await prisma.attribute.delete({
+      where: { id },
+    });
+
+    res.json({ success: true, message: "Attribute deleted successfully" });
+  } catch (error) {
+    console.error("Delete attribute error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to delete attribute" });
+  }
+};
+
+export { createAttribute, getAttributes, updateAttribute, deleteAttribute };
