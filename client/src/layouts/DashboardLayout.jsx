@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Link, Outlet } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 import useTheme from "../hooks/useTheme";
 import useLanguage from "../hooks/useLanguage";
@@ -30,9 +30,22 @@ const DashboardLayout = () => {
               <span className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">
                 Navigation
               </span>
-              <div className="p-2 bg-primary text-primary-content rounded font-semibold cursor-pointer">
+
+              <Link
+                to="/dashboard"
+                className="p-2 hover:bg-base-300 rounded font-semibold block"
+              >
                 Dashboard
-              </div>
+              </Link>
+
+              {(user?.role === "RECRUITER" || user?.role === "ADMIN") && (
+                <Link
+                  to="/dashboard/attributes"
+                  className="p-2 hover:bg-base-300 rounded font-semibold block text-primary"
+                >
+                  Attribute Library
+                </Link>
+              )}
             </nav>
           </div>
 

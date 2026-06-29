@@ -1,7 +1,9 @@
 import express from "express";
 import {
   createAttribute,
+  deleteAttribute,
   getAttributes,
+  updateAttribute,
 } from "../controllers/attributeController.js";
 import { protect, authorize } from "../middlewares/authMiddleware.js";
 

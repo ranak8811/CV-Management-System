@@ -1,4 +1,4 @@
-import { prisma } from "../config/db";
+import { prisma } from "../config/db.js";
 
 const createAttribute = async (req, res) => {
   const { category, name, type, options } = req.body;
