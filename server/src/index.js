@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { prisma } from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
+import attributeRoutes from "./routes/attributeRoutes.js";
 
 dotenv.config();
 
@@ -28,6 +29,7 @@ app.get("/test-db", async (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/attributes");
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
