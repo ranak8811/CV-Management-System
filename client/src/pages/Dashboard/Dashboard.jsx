@@ -1,39 +1,20 @@
 import useAuth from "../../hooks/useAuth";
-import toast from "react-hot-toast";
+import useLanguage from "../../hooks/useLanguage";
 
 const Dashboard = () => {
-  const { user, logout } = useAuth();
-
-  const handleLogout = () => {
-    logout();
-    toast.success("Successfully logged out!");
-  };
+  const { user } = useAuth();
+  const { t } = useLanguage();
 
   return (
-    <div className="p-6 font-sans">
-      <header className="flex justify-between items-center border-b border-gray-300 pb-4">
-        <h2 className="text-xl font-bold text-gray-800">
-          CV Management System Dashboard
-        </h2>
-        <div className="flex items-center">
-          <span className="text-sm text-gray-650 mr-4">
-            Welcome, <strong>{user?.name}</strong> ({user?.role})
-          </span>
-          <button
-            onClick={handleLogout}
-            className="px-3 py-1 border border-gray-400 bg-gray-200 hover:bg-gray-300 rounded text-sm"
-          >
-            Logout
-          </button>
+    <div>
+      <h3 className="text-2xl font-bold mb-4">{t("congratulations")}</h3>
+      <div className="bg-base-200 p-6 border border-base-300 rounded-lg max-w-lg">
+        <p className="text-base-content mb-4">{t("successMessage")}</p>
+        <div className="text-sm text-gray-500">
+          {t("emailLabel")}:{" "}
+          <strong className="text-base-content">{user?.email}</strong>
         </div>
-      </header>
-      <main className="mt-6">
-        <h3 className="text-lg font-bold mb-2">Congratulations!</h3>
-        <p className="text-gray-750">
-          You have successfully logged in via social authentication.
-        </p>
-        <p className="text-gray-750 mt-2">Your Email: {user?.email}</p>
-      </main>
+      </div>
     </div>
   );
 };

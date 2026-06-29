@@ -1,11 +1,15 @@
 import { GoogleLogin } from "@react-oauth/google";
 import useAuth from "../hooks/useAuth";
+import useTheme from "../hooks/useTheme";
+import useLanguage from "../hooks/useLanguage";
 import { useNavigate, Navigate } from "react-router-dom";
 import api from "../utils/api";
 import toast from "react-hot-toast";
 
 const Login = () => {
   const { user, handleLoginSuccess } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const { locale, switchLanguage } = useLanguage();
   const navigate = useNavigate();
 
   if (user) {
@@ -20,7 +24,11 @@ const Login = () => {
 
       if (res.data.success) {
         handleLoginSuccess(res.data.token, res.data.user);
-        toast.success("Successfully logged in with Google!");
+        toast.success(
+          locale === "en"
+            ? "Successfully logged in!"
+            : "¡Inicio de sesión exitoso!",
+        );
         navigate("/");
       } else {
         toast.error(res.data.message || "Google Login Failed");
@@ -40,9 +48,24 @@ const Login = () => {
   };
 
   return (
-    <div className="flex items-center justify-center h-screen bg-gray-100">
-      <div className="border border-gray-300 p-8 rounded-md bg-white w-80 text-center">
-        <h2 className="text-xl font-bold mb-6 text-gray-700">Sign In</h2>
+    <div className="flex flex-col items-center justify-center h-screen bg-base-200 text-base-content transition-colors duration-300">
+      <div className="absolute top-4 right-4 flex gap-2">
+        <button
+          onClick={toggleTheme}
+          className="px-3 py-1 border border-base-300 rounded bg-base-100 hover:bg-base-300 text-xs"
+        >
+          {theme === "light" ? "🌙" : "☀️"}
+        </button>
+        <button
+          onClick={() => switchLanguage(locale === "en" ? "es" : "en")}
+          className="px-3 py-1 border border-base-300 rounded bg-base-100 hover:bg-base-300 text-xs font-bold uppercase"
+        >
+          {locale === "en" ? "ES" : "EN"}
+        </button>
+      </div>
+
+      <div className="border border-base-300 p-8 rounded-md bg-base-100 w-80 text-center shadow-md">
+        <h2 className="text-xl font-bold mb-6 text-base-content">Sign In</h2>
 
         <div className="flex justify-center mb-4">
           <GoogleLogin
@@ -56,7 +79,7 @@ const Login = () => {
 
         <button
           onClick={handleGitHubLogin}
-          className="w-full py-2 bg-gray-800 text-white rounded font-bold text-sm hover:bg-gray-700"
+          className="w-full py-2 bg-gray-800 text-white rounded font-bold text-sm hover:bg-gray-700 transition"
         >
           Sign in with GitHub
         </button>
