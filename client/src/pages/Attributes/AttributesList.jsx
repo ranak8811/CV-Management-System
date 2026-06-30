@@ -30,7 +30,7 @@ const AttributesList = () => {
         );
         if (active && res.data.success) {
           setAttributes(res.data.data);
-          setSelectedIds([]); // Asynchronously clear selection when fetch succeeds
+          setSelectedIds([]);
         }
       } catch (error) {
         console.error("Fetch attributes error:", error);
