@@ -75,3 +75,76 @@ const createPosition = async (req, res) => {
       .json({ success: false, message: "Failed to create position" });
   }
 };
+
+const duplicatePosition = async (req, res) => {
+  const { id } = req.body;
+
+  try {
+    const original = await prisma.position.findUnique({
+      where: { id },
+      include: {
+        positionAttributes: true,
+        accessRules: true,
+      },
+    });
+
+    if (!original) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Original position not found" });
+    }
+
+    const duplicated = await prisma.$transaction(async (tx) => {
+      const copy = await tx.position.create({
+        data: {
+          title: `Copy of ${original.title}`,
+          description: original.description,
+          isPublic: original.isPublic,
+          maxProjects: original.maxProjects,
+          projectTags: original.projectTags,
+          version: 1,
+        },
+      });
+
+      if (original.positionAttributes.length > 0) {
+        await tx.positionAttribute.createMany({
+          data: original.positionAttributes.map((pa) => ({
+            positionId: copy.id,
+            attributeId: pa.attributeId,
+            order: pa.order,
+          })),
+        });
+      }
+
+      if (original.accessRules.length > 0) {
+        await tx.accessRule.createMany({
+          data: original.accessRules.map((ar) => ({
+            positionId: copy.id,
+            attributeId: ar.attributeId,
+            operator: ar.operator,
+            value: ar.value,
+          })),
+        });
+      }
+
+      return copy;
+    });
+
+    const fullDuplicated = await prisma.position.findUnique({
+      where: { id: duplicated.id },
+      include: {
+        positionAttributes: { include: { attribute: true } },
+        accessRules: { include: { attribute: true } },
+      },
+    });
+
+    res.status(201).json({ success: true, data: fullDuplicated });
+  } catch (error) {
+    console.error("Duplicate position error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to duplicate position" });
+  }
+};
+
+export { createPosition, duplicatePosition };
