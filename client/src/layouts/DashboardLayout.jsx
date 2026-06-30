@@ -55,6 +55,13 @@ const DashboardLayout = () => {
             </div>
 
             <button
+              onClick={handleLogout}
+              className="w-full px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-semibold transition mt-2"
+            >
+              {t("logout")}
+            </button>
+
+            <button
               onClick={toggleTheme}
               className="w-full px-3 py-2 border border-base-300 rounded-md text-sm bg-base-100 hover:bg-base-300 flex justify-between items-center"
             >
@@ -70,13 +77,6 @@ const DashboardLayout = () => {
               <span className="font-bold uppercase">
                 {locale === "en" ? "ES" : "EN"}
               </span>
-            </button>
-
-            <button
-              onClick={handleLogout}
-              className="w-full px-3 py-2 bg-red-650 hover:bg-red-700 text-white rounded-md text-sm font-semibold transition"
-            >
-              {t("logout")}
             </button>
           </div>
         </aside>

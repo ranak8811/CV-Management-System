@@ -70,7 +70,7 @@ const getAttributes = async (req, res) => {
       whereClause.category = category;
     }
 
-    const attribute = await prisma.attribute.findMany({
+    const attributes = await prisma.attribute.findMany({
       where: whereClause,
       include: { options: true },
       orderBy: { name: "asc" },
@@ -87,7 +87,6 @@ const getAttributes = async (req, res) => {
 
 const updateAttribute = async (req, res) => {
   const { id } = req.params;
-
   const { category, name, options } = req.body;
 
   try {
@@ -119,22 +118,28 @@ const updateAttribute = async (req, res) => {
       await tx.attribute.update({
         where: { id },
         data: {
-          name: name || attribute.category,
+          name: name || attribute.name,
           category: category || attribute.category,
         },
       });
 
-      if (options.length > 0) {
-        await tx.attributeOption.createMany({
-          data: options.map((opt) => ({
-            attributeId: id,
-            value: opt.trim(),
-          })),
+      if (attribute.type === "DROPDOWN" && Array.isArray(options)) {
+        await tx.attributeOption.deleteMany({
+          where: { attributeId: id },
         });
+
+        if (options.length > 0) {
+          await tx.attributeOption.createMany({
+            data: options.map((opt) => ({
+              attributeId: id,
+              value: opt.trim(),
+            })),
+          });
+        }
       }
     });
 
-    const updateData = await prisma.attribute.findUnique({
+    const updatedData = await prisma.attribute.findUnique({
       where: { id },
       include: { options: true },
     });

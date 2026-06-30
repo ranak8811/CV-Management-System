@@ -1,16 +1,18 @@
-import { useState } from "react";
-import toast from "react-hot-toast";
+import { useState, useEffect } from "react";
 import api from "../../utils/api";
-import { useEffect } from "react";
+import toast from "react-hot-toast";
+import AttributeModal from "../../components/AttributeModal";
 
 const AttributesList = () => {
   const [attributes, setAttributes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
-
   const [selectedIds, setSelectedIds] = useState([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [attributeToEdit, setAttributeToEdit] = useState(null);
 
   const categories = [
     "Certification",
@@ -64,10 +66,9 @@ const AttributesList = () => {
 
   const handleDeleteSelected = async () => {
     if (selectedIds.length === 0) return;
-
     if (
       !window.confirm(
-        `Are you sure want to delete ${selectedIds.length} attribute(s)`,
+        `Are you sure you want to delete ${selectedIds.length} attribute(s)?`,
       )
     )
       return;
@@ -76,7 +77,6 @@ const AttributesList = () => {
       for (const id of selectedIds) {
         await api.delete(`/api/attributes/${id}`);
       }
-
       toast.success("Selected attribute(s) deleted successfully!");
       setSelectedIds([]);
       setRefreshTrigger((prev) => prev + 1);
@@ -84,6 +84,24 @@ const AttributesList = () => {
       console.error("Delete error:", error);
       toast.error("Some attributes could not be deleted");
     }
+  };
+
+  const handleAddNewClick = () => {
+    setAttributeToEdit(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEditClick = () => {
+    if (selectedIds.length !== 1) return;
+    const target = attributes.find((attr) => attr.id === selectedIds[0]);
+    setAttributeToEdit(target);
+    setIsModalOpen(true);
+  };
+
+  const handleModalSave = () => {
+    setIsModalOpen(false);
+    setRefreshTrigger((prev) => prev + 1);
+    setSelectedIds([]);
   };
 
   return (
@@ -117,9 +135,15 @@ const AttributesList = () => {
           Selected: <span className="text-primary">{selectedIds.length}</span>
         </div>
         <div className="flex gap-2">
-          <button className="btn btn-sm btn-primary">+ Add New</button>
+          <button
+            onClick={handleAddNewClick}
+            className="btn btn-sm btn-primary"
+          >
+            + Add New
+          </button>
 
           <button
+            onClick={handleEditClick}
             disabled={selectedIds.length !== 1}
             className="btn btn-sm btn-neutral"
           >
@@ -164,7 +188,6 @@ const AttributesList = () => {
                 <th>Dropdown Options</th>
               </tr>
             </thead>
-
             <tbody>
               {attributes.map((attr) => (
                 <tr key={attr.id} className="hover:bg-base-200">
@@ -192,6 +215,13 @@ const AttributesList = () => {
           </table>
         </div>
       )}
+
+      <AttributeModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleModalSave}
+        attributeToEdit={attributeToEdit}
+      />
     </div>
   );
 };
