@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import { prisma } from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import attributeRoutes from "./routes/attributeRoutes.js";
+import positionRoutes from "./routes/positionRoutes.js";
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ app.get("/test-db", async (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/attributes", attributeRoutes);
+app.use("/api/positions", positionRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
