@@ -287,4 +287,33 @@ const updatePosition = async (req, res) => {
   }
 };
 
-export { createPosition, duplicatePosition, getPositions, updatePosition };
+const deletePosition = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const position = await prisma.position.findUnique({ where: { id } });
+
+    if (!position) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Position not found" });
+    }
+
+    await prisma.position.delete({ where: { id } });
+
+    res.json({ success: true, message: "Position deleted successfully" });
+  } catch (error) {
+    console.error("Delete position error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to delete position" });
+  }
+};
+
+export {
+  createPosition,
+  duplicatePosition,
+  getPositions,
+  updatePosition,
+  deletePosition,
+};
