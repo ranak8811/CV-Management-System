@@ -9,6 +9,7 @@ import Dashboard from "../pages/Dashboard/Dashboard";
 import Login from "../pages/Login";
 import GitHubCallback from "../components/GitHubCallback";
 import AttributesList from "../pages/Attributes/AttributesList";
+import PositionsList from "../pages/Positions/PositionsList";
 
 export const router = createBrowserRouter([
   {
@@ -54,6 +55,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <AttributesList />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "positions",
+        element: (
+          <ProtectedRoute>
+            <PositionsList />
           </ProtectedRoute>
         ),
       },
