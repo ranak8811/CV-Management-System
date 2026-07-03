@@ -310,10 +310,38 @@ const deletePosition = async (req, res) => {
   }
 };
 
+const getPositionById = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const position = await prisma.position.findUnique({
+      where: { id },
+      include: {
+        positionAttributes: { include: { attribute: true } },
+        accessRules: { include: { attribute: true } },
+      },
+    });
+
+    if (!position) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Position not found" });
+    }
+
+    res.json({ success: true, data: position });
+  } catch (error) {
+    console.error("Fetch single position error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch position" });
+  }
+};
+
 export {
   createPosition,
   duplicatePosition,
   getPositions,
   updatePosition,
   deletePosition,
+  getPositionById,
 };
