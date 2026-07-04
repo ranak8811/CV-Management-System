@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import api from "../../utils/api";
 import toast from "react-hot-toast";
+import Swal from "sweetalert2";
 import AttributeModal from "../../components/AttributeModal";
 
 const AttributesList = () => {
@@ -66,12 +67,18 @@ const AttributesList = () => {
 
   const handleDeleteSelected = async () => {
     if (selectedIds.length === 0) return;
-    if (
-      !window.confirm(
-        `Are you sure you want to delete ${selectedIds.length} attribute(s)?`,
-      )
-    )
-      return;
+
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: `You are about to delete ${selectedIds.length} attribute(s). This action cannot be undone.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#EF4444",
+      cancelButtonColor: "#6B7280",
+      confirmButtonText: "Yes, delete!",
+    });
+
+    if (!result.isConfirmed) return;
 
     try {
       for (const id of selectedIds) {
@@ -135,10 +142,7 @@ const AttributesList = () => {
           Selected: <span className="text-primary">{selectedIds.length}</span>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={handleAddNewClick}
-            className="btn btn-sm btn-primary"
-          >
+          <button onClick={handleAddNewClick} className="btn btn-sm btn-primary">
             + Add New
           </button>
 

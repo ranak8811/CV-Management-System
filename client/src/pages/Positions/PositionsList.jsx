@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import Swal from "sweetalert2";
 import api from "../../utils/api";
 
 const PositionsList = () => {
@@ -16,10 +17,8 @@ const PositionsList = () => {
 
     const fetchPositions = async () => {
       setLoading(true);
-
       try {
         const res = await api.get(`/api/positions?search=${search}`);
-
         if (active && res.data.success) {
           setPositions(res.data.data);
           setSelectedIds([]);
@@ -28,7 +27,6 @@ const PositionsList = () => {
         console.error("Fetch positions error:", error);
         toast.error("Failed to load positions");
       }
-
       if (active) setLoading(false);
     };
 
@@ -41,9 +39,9 @@ const PositionsList = () => {
 
   const handleSelectRow = (id) => {
     if (selectedIds.includes(id)) {
-      setSelectedIds(positions.map((pos) => pos.id));
+      setSelectedIds(selectedIds.filter((item) => item !== id));
     } else {
-      setSelectedIds([]);
+      setSelectedIds([...selectedIds, id]);
     }
   };
 
@@ -56,20 +54,24 @@ const PositionsList = () => {
   };
 
   const handleDeleteSelected = async () => {
-    if (setSelectedIds.length === 0) return;
+    if (selectedIds.length === 0) return;
 
-    if (
-      !window.confirm(
-        `Are you sure you want to delete ${selectedIds.length} positions`,
-      )
-    )
-      return;
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: `You are about to delete ${selectedIds.length} position(s). This action cannot be undone.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#EF4444",
+      cancelButtonColor: "#6B7280",
+      confirmButtonText: "Yes, delete!",
+    });
+
+    if (!result.isConfirmed) return;
 
     try {
       for (const id of selectedIds) {
         await api.delete(`/api/positions/${id}`);
       }
-
       toast.success("Selected position(s) deleted successfully!");
       setSelectedIds([]);
       setRefreshTrigger((prev) => prev + 1);
@@ -81,12 +83,10 @@ const PositionsList = () => {
 
   const handleDuplicateSelected = async () => {
     if (selectedIds.length !== 1) return;
-
     const targetId = selectedIds[0];
 
     try {
       const res = await api.post(`/api/positions/${targetId}/duplicate`);
-
       if (res.data.success) {
         toast.success("Position duplicated successfully!");
         setSelectedIds([]);
@@ -104,7 +104,6 @@ const PositionsList = () => {
 
   const handleEditClick = () => {
     if (selectedIds.length !== 1) return;
-
     navigate(`/dashboard/positions/edit/${selectedIds[0]}`);
   };
 
@@ -122,16 +121,13 @@ const PositionsList = () => {
         />
       </div>
 
-      <div className="flex items-center gap3 p-3 bg-base-200 border border-base-300 rounded-md mb-4 justify-between">
+      <div className="flex items-center gap-3 p-3 bg-base-200 border border-base-300 rounded-md mb-4 justify-between">
         <div className="text-sm font-semibold">
           Selected: <span className="text-primary">{selectedIds.length}</span>
         </div>
 
         <div className="flex gap-2">
-          <button
-            onClick={handleAddNewClick}
-            className="btn btn-sm btn-primary"
-          >
+          <button onClick={handleAddNewClick} className="btn btn-sm btn-primary">
             + Add New
           </button>
 

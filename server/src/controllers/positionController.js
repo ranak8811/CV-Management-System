@@ -77,7 +77,7 @@ const createPosition = async (req, res) => {
 };
 
 const duplicatePosition = async (req, res) => {
-  const { id } = req.body;
+  const { id } = req.params;
 
   try {
     const original = await prisma.position.findUnique({
@@ -148,7 +148,7 @@ const duplicatePosition = async (req, res) => {
 };
 
 const getPositions = async (req, res) => {
-  const { search } = req.qeury;
+  const { search } = req.query;
 
   try {
     const whereClause = {};

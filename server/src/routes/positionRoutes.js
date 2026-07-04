@@ -3,6 +3,7 @@ import {
   createPosition,
   deletePosition,
   duplicatePosition,
+  getPositionById,
   getPositions,
   updatePosition,
 } from "../controllers/positionController.js";
@@ -11,6 +12,8 @@ import { protect, authorize } from "../middlewares/authMiddleware.js";
 const router = express.Router();
 
 router.get("/", getPositions);
+
+router.get("/:id", protect, getPositionById);
 
 router.post("/", protect, authorize("RECRUITER", "ADMIN"), createPosition);
 

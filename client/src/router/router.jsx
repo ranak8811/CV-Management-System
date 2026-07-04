@@ -10,6 +10,7 @@ import Login from "../pages/Login";
 import GitHubCallback from "../components/GitHubCallback";
 import AttributesList from "../pages/Attributes/AttributesList";
 import PositionsList from "../pages/Positions/PositionsList";
+import PositionForm from "../pages/Positions/PositionForm";
 
 export const router = createBrowserRouter([
   {
@@ -63,6 +64,22 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <PositionsList />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "positions/new",
+        element: (
+          <ProtectedRoute>
+            <PositionForm />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "positions/edit/:id",
+        element: (
+          <ProtectedRoute>
+            <PositionForm />
           </ProtectedRoute>
         ),
       },
