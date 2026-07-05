@@ -284,3 +284,10 @@ const removeProfileAttribute = async (req, res) => {
       .json({ success: false, message: "Failed to remove attribute" });
   }
 };
+
+export {
+  getProfile,
+  saveProfileAttribute,
+  addProfileAttribute,
+  removeProfileAttribute,
+};
