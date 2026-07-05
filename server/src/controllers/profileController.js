@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { prisma } from "../config/db.js";
 
 const BUILT_IN_ATTRIBUTES = [
@@ -39,4 +40,37 @@ const ensureBuiltInAttributes = async (userId) => {
   }
 
   return createdAttributes;
+};
+
+const getProfile = async (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    await ensureBuiltInAttributes(useId);
+
+    const user = await prisma.user.findUnique({
+      where: { id: useId },
+      select: { id: true, email: true, name: true, role: true, version: true },
+    });
+
+    const attributeValues = await prisma.userAttributeValue.findMany({
+      where: { userId },
+      include: {
+        attribute: { include: { options: true } },
+      },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        user,
+        attributes: attributeValues,
+      },
+    });
+  } catch (error) {
+    console.error("Get profile error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to retrieve profile data" });
+  }
 };
