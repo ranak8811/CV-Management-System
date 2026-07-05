@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { userId } from "react";
 import { prisma } from "../config/db.js";
 
 const BUILT_IN_ATTRIBUTES = [
@@ -46,10 +46,10 @@ const getProfile = async (req, res) => {
   const userId = req.user.id;
 
   try {
-    await ensureBuiltInAttributes(useId);
+    await ensureBuiltInAttributes(userId);
 
     const user = await prisma.user.findUnique({
-      where: { id: useId },
+      where: { id: userId },
       select: { id: true, email: true, name: true, role: true, version: true },
     });
 
@@ -89,7 +89,7 @@ const saveProfileAttribute = async (req, res) => {
   try {
     const updateUser = await prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({
-        where: { id: useId },
+        where: { id: userId },
       });
 
       if (!user || user.version !== Number(version)) {
@@ -112,7 +112,7 @@ const saveProfileAttribute = async (req, res) => {
       });
 
       const updated = await tx.user.update({
-        where: { id: useId },
+        where: { id: userId },
         data: {
           version: { increment: 1 },
         },
@@ -181,7 +181,7 @@ const addProfileAttribute = async (req, res) => {
       });
 
       const updated = await tx.user.update({
-        where: { id: useId },
+        where: { id: userId },
         data: {
           version: { increment: 1 },
         },
@@ -211,5 +211,76 @@ const addProfileAttribute = async (req, res) => {
       success: false,
       message: "Failed to add attribute to profile",
     });
+  }
+};
+
+const removeProfileAttribute = async (req, res) => {
+  const userId = req.user.id;
+  const { attributeId, version } = req.body;
+
+  if (!attributeId || version === undefined) {
+    return res.status(400).json({
+      success: false,
+      message: "AttributeId and version are required",
+    });
+  }
+
+  try {
+    const attribute = await prisma.attribute.findUnique({
+      where: { id: attributeId },
+    });
+
+    if (
+      attribute &&
+      BUILT_IN_ATTRIBUTES.some((b) => b.name === attribute.name)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot remove built-in "Me" section attributes',
+      });
+    }
+
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user || user.version !== Number(version)) {
+        throw new Error("VersionConflict");
+      }
+
+      await tx.userAttributeValue.delete({
+        where: {
+          userId_attributeId: {
+            userId,
+            attributeId,
+          },
+        },
+      });
+
+      const updated = await tx.user.update({
+        where: { id: userId },
+        data: {
+          version: { increment: 1 },
+        },
+        select: { version: true },
+      });
+
+      return updated;
+    });
+
+    res.json({ success: true, newVersion: updatedUser.version });
+  } catch (error) {
+    if (error.message === "VersionConflict") {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Conflict: Profile has been updated elsewhere. Please refresh.",
+      });
+    }
+    console.error("Remove profile attribute error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to remove attribute" });
   }
 };
