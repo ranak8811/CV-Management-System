@@ -74,3 +74,66 @@ const getProfile = async (req, res) => {
       .json({ success: false, message: "Failed to retrieve profile data" });
   }
 };
+
+const saveProfileAttribute = async (req, res) => {
+  const userId = req.user.id;
+  const { attributeId, value, version } = req.body;
+
+  if (!attributeId || value === undefined || version === undefined) {
+    return res.status(400).json({
+      success: false,
+      message: "AttributeId, value, and version are required",
+    });
+  }
+
+  try {
+    const updateUser = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({
+        where: { id: useId },
+      });
+
+      if (!user || user.version !== Number(version)) {
+        throw new Error("VersionConflict");
+      }
+
+      await tx.userAttributeValue.upsert({
+        where: {
+          userId_attributeId: {
+            userId,
+            attributeId,
+          },
+        },
+        update: { value: String(value) },
+        create: {
+          userId,
+          attributeId,
+          value: String(value),
+        },
+      });
+
+      const updated = await tx.user.update({
+        where: { id: useId },
+        data: {
+          version: { increment: 1 },
+        },
+        select: { version: true },
+      });
+
+      return updated;
+    });
+
+    res.json({ success: true, newVersion: updateUser.version });
+  } catch (error) {
+    if (error.message === "VersionConflict") {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Conflict: Profile has been updated from another session. Please refresh.",
+      });
+    }
+    console.error("Save profile attribute error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to save attribute value" });
+  }
+};
