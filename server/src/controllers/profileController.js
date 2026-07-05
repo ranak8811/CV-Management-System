@@ -137,3 +137,79 @@ const saveProfileAttribute = async (req, res) => {
       .json({ success: false, message: "Failed to save attribute value" });
   }
 };
+
+const addProfileAttribute = async (req, res) => {
+  const userId = req.user.id;
+  const { attributeId, version } = req.body;
+
+  if (!attributeId || version === undefined) {
+    return res.status(400).json({
+      success: false,
+      message: "AttributeId and version are required",
+    });
+  }
+
+  try {
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user || user.version !== Number(version)) {
+        throw new Error("VersionConflict");
+      }
+
+      const existingValue = await tx.userAttributeValue.findUnique({
+        where: {
+          userId_attributeId: {
+            userId,
+            attributeId,
+          },
+        },
+      });
+
+      if (existingValue) {
+        throw new Error("AlreadyAdded");
+      }
+
+      await tx.userAttributeValue.create({
+        data: {
+          userId,
+          attributeId,
+          value: "",
+        },
+      });
+
+      const updated = await tx.user.update({
+        where: { id: useId },
+        data: {
+          version: { increment: 1 },
+        },
+        select: { version: true },
+      });
+
+      return updated;
+    });
+
+    res.json({ success: true, newVersion: updatedUser.version });
+  } catch (error) {
+    if (error.message === "VersionConflict") {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Conflict: Profile has been updated elsewhere. Please refresh.",
+      });
+    }
+    if (error.message === "AlreadyAdded") {
+      return res.status(400).json({
+        success: false,
+        message: "Attribute is already added to profile",
+      });
+    }
+    console.error("Add profile attribute error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to add attribute to profile",
+    });
+  }
+};
