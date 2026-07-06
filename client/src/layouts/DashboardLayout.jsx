@@ -21,7 +21,7 @@ const DashboardLayout = () => {
   return (
     <div className="min-h-screen bg-base-100 text-base-content font-sans transition-colors duration-300">
       <div className="flex flex-col md:flex-row min-h-screen">
-        <aside className="w-full md:w-64 bg-base-200 border-r border-base-300 p-4 flex flex-col justify-between">
+        <aside className="w-full md:w-64 bg-base-200 border-r border-base-300 p-4 flex flex-col justify-between md:h-screen md:sticky md:top-0 overflow-hidden">
           <div>
             <h2 className="text-xl font-bold mb-6 text-primary">
               {t("dashboardTitle")}
@@ -36,6 +36,13 @@ const DashboardLayout = () => {
                 className="p-2 hover:bg-base-300 rounded font-semibold block"
               >
                 Dashboard
+              </Link>
+
+              <Link
+                to="/dashboard/profile"
+                className="p-2 hover:bg-base-300 rounded font-semibold block text-primary"
+              >
+                My Profile
               </Link>
 
               {(user?.role === "RECRUITER" || user?.role === "ADMIN") && (

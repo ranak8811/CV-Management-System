@@ -11,6 +11,7 @@ import GitHubCallback from "../components/GitHubCallback";
 import AttributesList from "../pages/Attributes/AttributesList";
 import PositionsList from "../pages/Positions/PositionsList";
 import PositionForm from "../pages/Positions/PositionForm";
+import Profile from "../pages/Profile/Profile";
 
 export const router = createBrowserRouter([
   {
@@ -56,6 +57,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <AttributesList />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "profile",
+        element: (
+          <ProtectedRoute>
+            <Profile />
           </ProtectedRoute>
         ),
       },

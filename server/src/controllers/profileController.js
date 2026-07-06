@@ -1,4 +1,3 @@
-import { userId } from "react";
 import { prisma } from "../config/db.js";
 
 const BUILT_IN_ATTRIBUTES = [
@@ -21,11 +20,15 @@ const ensureBuiltInAttributes = async (userId) => {
         data: item,
       });
     }
-
     createdAttributes.push(attr);
 
     const userVal = await prisma.userAttributeValue.findUnique({
-      where: { userId_attributeId: { userId, attributeId: attr.id } },
+      where: {
+        userId_attributeId: {
+          userId,
+          attributeId: attr.id,
+        },
+      },
     });
 
     if (!userVal) {
@@ -38,7 +41,6 @@ const ensureBuiltInAttributes = async (userId) => {
       });
     }
   }
-
   return createdAttributes;
 };
 
@@ -56,7 +58,9 @@ const getProfile = async (req, res) => {
     const attributeValues = await prisma.userAttributeValue.findMany({
       where: { userId },
       include: {
-        attribute: { include: { options: true } },
+        attribute: {
+          include: { options: true },
+        },
       },
     });
 
@@ -80,57 +84,48 @@ const saveProfileAttribute = async (req, res) => {
   const { attributeId, value, version } = req.body;
 
   if (!attributeId || value === undefined || version === undefined) {
-    return res.status(400).json({
-      success: false,
-      message: "AttributeId, value, and version are required",
-    });
+    return res
+      .status(400)
+      .json({ success: false, message: "Required fields missing" });
   }
 
   try {
-    const updateUser = await prisma.$transaction(async (tx) => {
-      const user = await tx.user.findUnique({
-        where: { id: userId },
-      });
-
-      if (!user || user.version !== Number(version)) {
-        throw new Error("VersionConflict");
-      }
-
-      await tx.userAttributeValue.upsert({
-        where: {
-          userId_attributeId: {
-            userId,
-            attributeId,
-          },
-        },
-        update: { value: String(value) },
-        create: {
-          userId,
-          attributeId,
-          value: String(value),
-        },
-      });
-
-      const updated = await tx.user.update({
-        where: { id: userId },
-        data: {
-          version: { increment: 1 },
-        },
-        select: { version: true },
-      });
-
-      return updated;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
     });
 
-    res.json({ success: true, newVersion: updateUser.version });
-  } catch (error) {
-    if (error.message === "VersionConflict") {
+    if (!user || user.version !== Number(version)) {
       return res.status(409).json({
         success: false,
-        message:
-          "Conflict: Profile has been updated from another session. Please refresh.",
+        message: "Conflict detected: Profile has changed. Please refresh.",
       });
     }
+
+    await prisma.userAttributeValue.upsert({
+      where: {
+        userId_attributeId: {
+          userId,
+          attributeId,
+        },
+      },
+      update: { value: String(value) },
+      create: {
+        userId,
+        attributeId,
+        value: String(value),
+      },
+    });
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        version: { increment: 1 },
+      },
+      select: { version: true },
+    });
+
+    res.json({ success: true, newVersion: updatedUser.version });
+  } catch (error) {
     console.error("Save profile attribute error:", error);
     res
       .status(500)
@@ -143,74 +138,60 @@ const addProfileAttribute = async (req, res) => {
   const { attributeId, version } = req.body;
 
   if (!attributeId || version === undefined) {
-    return res.status(400).json({
-      success: false,
-      message: "AttributeId and version are required",
-    });
+    return res
+      .status(400)
+      .json({ success: false, message: "Required fields missing" });
   }
 
   try {
-    const updatedUser = await prisma.$transaction(async (tx) => {
-      const user = await tx.user.findUnique({
-        where: { id: userId },
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user || user.version !== Number(version)) {
+      return res.status(409).json({
+        success: false,
+        message: "Conflict detected: Profile has changed. Please refresh.",
       });
+    }
 
-      if (!user || user.version !== Number(version)) {
-        throw new Error("VersionConflict");
-      }
-
-      const existingValue = await tx.userAttributeValue.findUnique({
-        where: {
-          userId_attributeId: {
-            userId,
-            attributeId,
-          },
-        },
-      });
-
-      if (existingValue) {
-        throw new Error("AlreadyAdded");
-      }
-
-      await tx.userAttributeValue.create({
-        data: {
+    const existingValue = await prisma.userAttributeValue.findUnique({
+      where: {
+        userId_attributeId: {
           userId,
           attributeId,
-          value: "",
         },
-      });
+      },
+    });
 
-      const updated = await tx.user.update({
-        where: { id: userId },
-        data: {
-          version: { increment: 1 },
-        },
-        select: { version: true },
-      });
+    if (existingValue) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Attribute already added" });
+    }
 
-      return updated;
+    await prisma.userAttributeValue.create({
+      data: {
+        userId,
+        attributeId,
+        value: "",
+      },
+    });
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        version: { increment: 1 },
+      },
+      select: { version: true },
     });
 
     res.json({ success: true, newVersion: updatedUser.version });
   } catch (error) {
-    if (error.message === "VersionConflict") {
-      return res.status(409).json({
-        success: false,
-        message:
-          "Conflict: Profile has been updated elsewhere. Please refresh.",
-      });
-    }
-    if (error.message === "AlreadyAdded") {
-      return res.status(400).json({
-        success: false,
-        message: "Attribute is already added to profile",
-      });
-    }
     console.error("Add profile attribute error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to add attribute to profile",
-    });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to add attribute" });
   }
 };
 
@@ -219,10 +200,9 @@ const removeProfileAttribute = async (req, res) => {
   const { attributeId, version } = req.body;
 
   if (!attributeId || version === undefined) {
-    return res.status(400).json({
-      success: false,
-      message: "AttributeId and version are required",
-    });
+    return res
+      .status(400)
+      .json({ success: false, message: "Required fields missing" });
   }
 
   try {
@@ -230,54 +210,42 @@ const removeProfileAttribute = async (req, res) => {
       where: { id: attributeId },
     });
 
-    if (
-      attribute &&
-      BUILT_IN_ATTRIBUTES.some((b) => b.name === attribute.name)
-    ) {
-      return res.status(400).json({
+    if (attribute && BUILT_IN_ATTRIBUTES.some((b) => b.name === attribute.name)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Cannot remove built-in attributes" });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user || user.version !== Number(version)) {
+      return res.status(409).json({
         success: false,
-        message: 'Cannot remove built-in "Me" section attributes',
+        message: "Conflict detected: Profile has changed. Please refresh.",
       });
     }
 
-    const updatedUser = await prisma.$transaction(async (tx) => {
-      const user = await tx.user.findUnique({
-        where: { id: userId },
-      });
-
-      if (!user || user.version !== Number(version)) {
-        throw new Error("VersionConflict");
-      }
-
-      await tx.userAttributeValue.delete({
-        where: {
-          userId_attributeId: {
-            userId,
-            attributeId,
-          },
+    await prisma.userAttributeValue.delete({
+      where: {
+        userId_attributeId: {
+          userId,
+          attributeId,
         },
-      });
+      },
+    });
 
-      const updated = await tx.user.update({
-        where: { id: userId },
-        data: {
-          version: { increment: 1 },
-        },
-        select: { version: true },
-      });
-
-      return updated;
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        version: { increment: 1 },
+      },
+      select: { version: true },
     });
 
     res.json({ success: true, newVersion: updatedUser.version });
   } catch (error) {
-    if (error.message === "VersionConflict") {
-      return res.status(409).json({
-        success: false,
-        message:
-          "Conflict: Profile has been updated elsewhere. Please refresh.",
-      });
-    }
     console.error("Remove profile attribute error:", error);
     res
       .status(500)
