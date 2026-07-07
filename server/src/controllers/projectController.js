@@ -178,3 +178,21 @@ const deleteProject = async (req, res) => {
       .json({ success: false, message: "Failed to delete project" });
   }
 };
+
+const getUniqueTags = async (req, res) => {
+  try {
+    const projects = await prisma.project.findMany({
+      select: { tags: true },
+    });
+
+    const allTags = projects.flatMap((p) => p.tags);
+    const uniqueTags = [...new Set(allTags)];
+
+    res.json({ success: true, data: uniqueTags });
+  } catch (error) {
+    console.error("Fetch unique tags error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch unique tags" });
+  }
+};
