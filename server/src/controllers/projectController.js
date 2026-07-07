@@ -196,3 +196,5 @@ const getUniqueTags = async (req, res) => {
       .json({ success: false, message: "Failed to fetch unique tags" });
   }
 };
+
+export { createProject, updateProject, deleteProject, getUniqueTags };

@@ -6,6 +6,7 @@ import authRoutes from "./routes/authRoutes.js";
 import attributeRoutes from "./routes/attributeRoutes.js";
 import positionRoutes from "./routes/positionRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
+import projectRoutes from "./routes/projectRoutes.js";
 
 dotenv.config();
 
@@ -34,6 +35,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/attributes", attributeRoutes);
 app.use("/api/positions", positionRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/projects", projectRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
