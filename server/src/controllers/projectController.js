@@ -1,4 +1,4 @@
-import { prisma } from "../config/db";
+import { prisma } from "../config/db.js";
 
 const createProject = async (req, res) => {
   const userId = req.user.id;
