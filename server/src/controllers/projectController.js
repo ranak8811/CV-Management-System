@@ -120,3 +120,61 @@ const updateProject = async (req, res) => {
       .json({ success: false, message: "Failed to update project" });
   }
 };
+
+const deleteProject = async (req, res) => {
+  const userId = req.user.id;
+  const { id } = req.params;
+  const { version } = req.body;
+
+  if (version === undefined) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Version is required" });
+  }
+
+  try {
+    const project = await prisma.project.findUnique({
+      where: { id },
+    });
+
+    if (!project || project.userId !== userId) {
+      return res.status(404).json({
+        success: false,
+        message: "Project not found or unauthorized",
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user || user.version !== Number(version)) {
+      return res.status(409).json({
+        success: false,
+        message: "Conflict detected: Profile has changed. Please refresh.",
+      });
+    }
+
+    await prisma.project.delete({
+      where: { id },
+    });
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        version: { increment: 1 },
+      },
+      select: { version: true },
+    });
+
+    res.json({
+      success: true,
+      newVersion: updatedUser.version,
+    });
+  } catch (error) {
+    console.error("Delete project error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to delete project" });
+  }
+};
