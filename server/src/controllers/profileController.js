@@ -64,11 +64,17 @@ const getProfile = async (req, res) => {
       },
     });
 
+    const projects = await prisma.project.findMany({
+      where: { userId },
+      orderBy: { startDate: "desc" },
+    });
+
     res.json({
       success: true,
       data: {
         user,
         attributes: attributeValues,
+        projects,
       },
     });
   } catch (error) {

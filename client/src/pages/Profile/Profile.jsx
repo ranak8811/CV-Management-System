@@ -3,16 +3,22 @@ import api from "../../utils/api";
 import toast from "react-hot-toast";
 import Swal from "sweetalert2";
 import Loading from "../../components/Loading";
+import ProjectModal from "../../components/ProjectModal";
+import { marked } from "marked";
 
 const Profile = () => {
   const [profileUser, setProfileUser] = useState(null);
   const [attributes, setAttributes] = useState([]);
   const [libraryAttributes, setLibraryAttributes] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [unsavedChanges, setUnsavedChanges] = useState({});
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [projectToEdit, setProjectToEdit] = useState(null);
 
   useEffect(() => {
     const loadProfileData = async () => {
@@ -21,6 +27,7 @@ const Profile = () => {
         if (res.data.success) {
           setProfileUser(res.data.data.user);
           setAttributes(res.data.data.attributes);
+          setProjects(res.data.data.projects || []);
         }
         const libRes = await api.get("/api/attributes");
         if (libRes.data.success) {
@@ -179,6 +186,51 @@ const Profile = () => {
         toast.error("Version conflict. Please refresh page.");
       } else {
         toast.error("Failed to remove attribute");
+      }
+    }
+  };
+
+  const handleProjectSave = (savedProject, newVersion) => {
+    setProfileUser((prev) => ({ ...prev, version: newVersion }));
+    if (projectToEdit) {
+      setProjects((prev) =>
+        prev.map((p) => (p.id === savedProject.id ? savedProject : p)),
+      );
+    } else {
+      setProjects((prev) => [savedProject, ...prev]);
+    }
+    setIsProjectModalOpen(false);
+  };
+
+  const handleDeleteProject = async (projId) => {
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "Do you want to delete this project from your profile?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#EF4444",
+      cancelButtonColor: "#6B7280",
+      confirmButtonText: "Yes, delete!",
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      const res = await api.delete(`/api/projects/${projId}`, {
+        data: { version: profileUser.version },
+      });
+
+      if (res.data.success) {
+        setProfileUser((prev) => ({ ...prev, version: res.data.newVersion }));
+        setProjects((prev) => prev.filter((p) => p.id !== projId));
+        toast.success("Project deleted successfully");
+      }
+    } catch (err) {
+      console.error(err);
+      if (err.response?.status === 409) {
+        toast.error("Version conflict. Please refresh page.");
+      } else {
+        toast.error("Failed to delete project");
       }
     }
   };
@@ -347,9 +399,21 @@ const Profile = () => {
     }
   };
 
+  const renderMarkdown = (text) => {
+    return { __html: marked.parse(text || "") };
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+    });
+  };
+
   return (
-    <div className="p-4 font-sans bg-base-100 text-base-content min-h-screen max-w-3xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-4 font-sans bg-base-100 text-base-content min-h-screen max-w-3xl mx-auto flex flex-col gap-6">
+      <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">My Personal Profile</h2>
         {saving && (
           <span className="text-xs text-primary flex items-center gap-1">
@@ -359,7 +423,7 @@ const Profile = () => {
         )}
       </div>
 
-      <div className="border border-base-300 p-6 rounded-lg bg-base-200 mb-6 flex flex-col gap-4">
+      <div className="border border-base-300 p-6 rounded-lg bg-base-200 flex flex-col gap-4">
         <h3 className="text-lg font-bold border-b border-base-300 pb-2">
           Me (Undeletable Attributes)
         </h3>
@@ -420,6 +484,73 @@ const Profile = () => {
         )}
       </div>
 
+      <div className="border border-base-300 p-6 rounded-lg bg-base-200 flex flex-col gap-4">
+        <div className="flex justify-between items-center border-b border-base-300 pb-2">
+          <h3 className="text-lg font-bold">Projects</h3>
+          <button
+            onClick={() => {
+              setProjectToEdit(null);
+              setIsProjectModalOpen(true);
+            }}
+            className="btn btn-sm btn-primary"
+          >
+            + Add Project
+          </button>
+        </div>
+
+        {projects.length === 0 ? (
+          <p className="text-sm text-gray-500">No projects added yet.</p>
+        ) : (
+          projects.map((proj) => (
+            <div
+              key={proj.id}
+              className="border border-base-300 p-4 rounded bg-base-100 flex flex-col gap-3 relative"
+            >
+              <div className="absolute top-3 right-3 flex gap-1">
+                <button
+                  onClick={() => {
+                    setProjectToEdit(proj);
+                    setIsProjectModalOpen(true);
+                  }}
+                  className="btn btn-neutral btn-xs"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDeleteProject(proj.id)}
+                  className="btn btn-error btn-xs text-white"
+                >
+                  Delete
+                </button>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-base pr-20">{proj.name}</h4>
+                <span className="text-xs text-gray-400">
+                  {formatDate(proj.startDate)} -{" "}
+                  {proj.endDate ? formatDate(proj.endDate) : "Present"}
+                </span>
+              </div>
+
+              <div
+                dangerouslySetInnerHTML={renderMarkdown(proj.description)}
+                className="text-sm prose prose-sm max-w-none text-base-content"
+              />
+
+              {proj.tags && proj.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {proj.tags.map((tag, idx) => (
+                    <span key={idx} className="badge badge-outline badge-sm">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-base-100 text-base-content border border-base-300 p-6 rounded-lg w-full max-w-md shadow-lg flex flex-col gap-4">
@@ -464,6 +595,14 @@ const Profile = () => {
           </div>
         </div>
       )}
+
+      <ProjectModal
+        isOpen={isProjectModalOpen}
+        onClose={() => setIsProjectModalOpen(false)}
+        onSave={handleProjectSave}
+        projectToEdit={projectToEdit}
+        userVersion={profileUser?.version}
+      />
     </div>
   );
 };
