@@ -317,3 +317,97 @@ const updateCV = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to update CV" });
   }
 };
+
+const saveCVAttributeValue = async (req, res) => {
+  const userId = req.user.id;
+  const userRole = req.user.role;
+  const { id } = req.params;
+  const { attributeId, value, cvVersion, userVersion } = req.body;
+
+  if (
+    !attributeId ||
+    value === undefined ||
+    cvVersion === undefined ||
+    userVersion === undefined
+  ) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Required fields missing" });
+  }
+
+  try {
+    const cv = await prisma.cV.findUnique({
+      where: { id },
+    });
+
+    if (!cv) {
+      return res.status(404).json({ success: false, message: "CV not found" });
+    }
+
+    if (userRole === "CANDIDATE" && cv.candidateId !== userId) {
+      return res
+        .status(403)
+        .json({ success: false, message: "Unauthorized access" });
+    }
+
+    if (cv.version !== Number(cvVersion)) {
+      return res.status(409).json({
+        success: false,
+        message: "Conflict: CV has changed. Please refresh.",
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: cv.candidateId },
+    });
+
+    if (!user || user.version !== Number(userVersion)) {
+      return res.status(409).json({
+        success: false,
+        message: "Conflict: Profile has changed. Please refresh.",
+      });
+    }
+
+    await prisma.userAttributeValue.upsert({
+      where: {
+        userId_attributeId: {
+          userId: cv.candidateId,
+          attributeId,
+        },
+      },
+      update: { value: String(value) },
+      create: {
+        userId: cv.candidateId,
+        attributeId,
+        value: String(value),
+      },
+    });
+
+    const updatedUser = await prisma.user.update({
+      where: { id: cv.candidateId },
+      data: {
+        version: { increment: 1 },
+      },
+      select: { version: true },
+    });
+
+    const updatedCV = await prisma.cV.update({
+      where: { id },
+      data: {
+        version: { increment: 1 },
+      },
+      select: { version: true },
+    });
+
+    res.json({
+      success: true,
+      newCVVersion: updatedCV.version,
+      newUserVersion: updatedUser.version,
+    });
+  } catch (error) {
+    console.error("Save CV attribute error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to save attribute" });
+  }
+};
