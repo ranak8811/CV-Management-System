@@ -221,3 +221,35 @@ const getCandidateCVs = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to retrieve CVs" });
   }
 };
+
+const getPositionCVs = async (req, res) => {
+  const { positionId } = req.params;
+  const userRole = req.user.role;
+
+  try {
+    const whereClause = { positionId };
+
+    if (userRole === "RECRUITER") {
+      whereClause.isPublished = true;
+    }
+
+    const cvs = await prisma.cV.findMany({
+      where: whereClause,
+      include: {
+        candidate: {
+          select: { id: true, name: true, email: true },
+        },
+        _count: { select: { likes: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    res.json({ success: true, data: cvs });
+  } catch (error) {
+    console.error("Get position CVs error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve CVs for this position",
+    });
+  }
+};
