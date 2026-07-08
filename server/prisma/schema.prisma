@@ -178,8 +178,8 @@ model CV {
   candidate User     @relation(fields: [candidateId], references: [id], onDelete: Cascade)
   position  Position @relation(fields: [positionId], references: [id], onDelete: Cascade)
 
-  likes   CVLike[]
-  project Project[]
+  likes    CVLike[]
+  projects Project[]
 
   @@unique([candidateId, positionId])
 }

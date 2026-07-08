@@ -131,3 +131,73 @@ const createCV = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to create CV" });
   }
 };
+
+const getCVById = async (req, res) => {
+  const userId = req.user.id;
+  const userRole = req.user.role;
+  const { id } = req.params;
+
+  try {
+    const cv = await prisma.cV.findUnique({
+      where: { id },
+      include: {
+        position: {
+          include: {
+            positionAttributes: {
+              include: { attribute: { include: { options: true } } },
+              orderBy: { order: "asc" },
+            },
+          },
+        },
+
+        candidate: {
+          select: { id: true, email: true, name: true, version: true },
+        },
+        projects: true,
+        likes: true,
+      },
+    });
+
+    if (!cv) {
+      return res.status(404).json({ success: false, message: "CV not found" });
+    }
+
+    if (userRole === "CANDIDATE" && cv.candidateId !== userId) {
+      return res
+        .status(403)
+        .json({ success: false, message: "Unauthorized access to this CV" });
+    }
+
+    if (userRole === "RECRUITER" && !cv.isPublished) {
+      return res.status(403).json({
+        success: false,
+        message: "Draft CVs are not visible to recruiters",
+      });
+    }
+
+    const attributeIds = cv.position.positionAttributes.map(
+      (pa) => pa.attributeId,
+    );
+
+    const candidateAttributes = await prisma.userAttributeValue.findMany({
+      where: {
+        userId: cv.candidateId,
+        attributeId: { in: attributeIds },
+      },
+      include: {
+        attribute: { include: { options: true } },
+      },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        cv,
+        attributeValues: candidateAttributes,
+      },
+    });
+  } catch (error) {
+    console.error("Get CV error:", error);
+    res.status(500).json({ success: false, message: "Failed to retrieve CV" });
+  }
+};
