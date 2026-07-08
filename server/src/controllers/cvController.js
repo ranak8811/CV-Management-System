@@ -253,3 +253,67 @@ const getPositionCVs = async (req, res) => {
     });
   }
 };
+
+const updateCV = async (req, res) => {
+  const userId = req.user.id;
+  const userRole = req.user.role;
+  const { id } = req.params;
+
+  const { name, status, isPublished, projectIds, version } = req.body;
+
+  if (version === undefined) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Version is required" });
+  }
+
+  try {
+    const cv = await prisma.cV.findUnique({
+      where: { id },
+    });
+
+    if (userRole === "CANDIDATE" && cv.candidateId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized access to this CV",
+      });
+    }
+
+    if (cv.version !== Number(version)) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Conflict detected: CV has been modified elsewhere. Please refresh.",
+      });
+    }
+
+    const updateData = {};
+
+    if (name) updateData.name = name.trim();
+    if (status) updateData.status = status.trim();
+    if (isPublished !== undefined) updateData.isPublished = isPublished;
+
+    if (Array.isArray(projectIds)) {
+      updateData.projects = {
+        set: projectIds.map((pid) => ({ id: pid })),
+      };
+    }
+
+    updateData.version = { increment: 1 };
+
+    const updatedCV = await prisma.cV.update({
+      where: { id },
+      data: updateData,
+      include: { projects: true },
+    });
+
+    res.json({
+      success: true,
+      data: updatedCV,
+      neVersion: updatedCV.version,
+    });
+  } catch (error) {
+    console.error("Update CV error:", error);
+    res.status(500).json({ success: false, message: "Failed to update CV" });
+  }
+};
