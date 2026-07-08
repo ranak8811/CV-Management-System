@@ -411,3 +411,46 @@ const saveCVAttributeValue = async (req, res) => {
       .json({ success: false, message: "Failed to save attribute" });
   }
 };
+
+const deleteCV = async (req, res) => {
+  const userId = req.user.id;
+  const userRole = req.user.role;
+  const { id } = req.params;
+  const { version } = req.body;
+
+  if (version === undefined) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Version is required" });
+  }
+
+  try {
+    const cv = await prisma.cV.findUnique({
+      where: { id },
+    });
+
+    if (!cv) {
+      return res.status(404).json({ success: false, message: "CV not found" });
+    }
+
+    if (userRole === "CANDIDATE" && cv.candidateId !== userId) {
+      return res.status(403).json({ success: false, message: "Unauthorized" });
+    }
+
+    if (cv.version !== Number(version)) {
+      return res.status(409).json({
+        success: false,
+        message: "Conflict detected: CV has changed. Please refresh.",
+      });
+    }
+
+    await prisma.cV.delete({
+      where: { id },
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Delete CV error:", error);
+    res.status(500).json({ success: false, message: "Failed to delete CV" });
+  }
+};
