@@ -19,48 +19,44 @@ const createPosition = async (req, res) => {
   }
 
   try {
-    const newPosition = await prisma.$transaction(async (tx) => {
-      const position = await tx.position.create({
-        data: {
-          title,
-          description,
-          isPublic: isPublic !== undefined ? isPublic : true,
-          maxProjects: maxProjects !== undefined ? Number(maxProjects) : 3,
-          projectTags: Array.isArray(projectTags) ? projectTags : [],
-          version: 1,
-        },
-      });
-
-      if (Array.isArray(selectedAttributes) && selectedAttributes.length > 0) {
-        await tx.positionAttribute.createMany({
-          data: selectedAttributes.map((attr) => ({
-            positionId: position.id,
-            attributeId: attr.attributeId,
-            order: attr.order !== undefined ? Number(attr.order) : 0,
-          })),
-        });
-      }
-
-      if (
-        isPublic === false &&
-        Array.isArray(accessRules) &&
-        accessRules.length > 0
-      ) {
-        await tx.accessRule.createMany({
-          data: accessRules.map((rule) => ({
-            positionId: position.id,
-            attributeId: rule.attributeId,
-            operator: rule.operator,
-            value: String(rule.value),
-          })),
-        });
-      }
-
-      return position;
+    const position = await prisma.position.create({
+      data: {
+        title,
+        description,
+        isPublic: isPublic !== undefined ? isPublic : true,
+        maxProjects: maxProjects !== undefined ? Number(maxProjects) : 3,
+        projectTags: Array.isArray(projectTags) ? projectTags : [],
+        version: 1,
+      },
     });
 
+    if (Array.isArray(selectedAttributes) && selectedAttributes.length > 0) {
+      await prisma.positionAttribute.createMany({
+        data: selectedAttributes.map((attr) => ({
+          positionId: position.id,
+          attributeId: attr.attributeId,
+          order: attr.order !== undefined ? Number(attr.order) : 0,
+        })),
+      });
+    }
+
+    if (
+      isPublic === false &&
+      Array.isArray(accessRules) &&
+      accessRules.length > 0
+    ) {
+      await prisma.accessRule.createMany({
+        data: accessRules.map((rule) => ({
+          positionId: position.id,
+          attributeId: rule.attributeId,
+          operator: rule.operator,
+          value: String(rule.value),
+        })),
+      });
+    }
+
     const savedPosition = await prisma.position.findUnique({
-      where: { id: newPosition.id },
+      where: { id: position.id },
       include: {
         positionAttributes: { include: { attribute: true } },
         accessRules: { include: { attribute: true } },
@@ -94,44 +90,40 @@ const duplicatePosition = async (req, res) => {
         .json({ success: false, message: "Original position not found" });
     }
 
-    const duplicated = await prisma.$transaction(async (tx) => {
-      const copy = await tx.position.create({
-        data: {
-          title: `Copy of ${original.title}`,
-          description: original.description,
-          isPublic: original.isPublic,
-          maxProjects: original.maxProjects,
-          projectTags: original.projectTags,
-          version: 1,
-        },
-      });
-
-      if (original.positionAttributes.length > 0) {
-        await tx.positionAttribute.createMany({
-          data: original.positionAttributes.map((pa) => ({
-            positionId: copy.id,
-            attributeId: pa.attributeId,
-            order: pa.order,
-          })),
-        });
-      }
-
-      if (original.accessRules.length > 0) {
-        await tx.accessRule.createMany({
-          data: original.accessRules.map((ar) => ({
-            positionId: copy.id,
-            attributeId: ar.attributeId,
-            operator: ar.operator,
-            value: ar.value,
-          })),
-        });
-      }
-
-      return copy;
+    const copy = await prisma.position.create({
+      data: {
+        title: `Copy of ${original.title}`,
+        description: original.description,
+        isPublic: original.isPublic,
+        maxProjects: original.maxProjects,
+        projectTags: original.projectTags,
+        version: 1,
+      },
     });
 
+    if (original.positionAttributes.length > 0) {
+      await prisma.positionAttribute.createMany({
+        data: original.positionAttributes.map((pa) => ({
+          positionId: copy.id,
+          attributeId: pa.attributeId,
+          order: pa.order,
+        })),
+      });
+    }
+
+    if (original.accessRules.length > 0) {
+      await prisma.accessRule.createMany({
+        data: original.accessRules.map((ar) => ({
+          positionId: copy.id,
+          attributeId: ar.attributeId,
+          operator: ar.operator,
+          value: ar.value,
+        })),
+      });
+    }
+
     const fullDuplicated = await prisma.position.findUnique({
-      where: { id: duplicated.id },
+      where: { id: copy.id },
       include: {
         positionAttributes: { include: { attribute: true } },
         accessRules: { include: { attribute: true } },
@@ -201,7 +193,7 @@ const updatePosition = async (req, res) => {
   }
 
   try {
-    const orgininal = await prisma.position.findUnique({ where: { id } });
+    const original = await prisma.position.findUnique({ where: { id } });
 
     if (!original) {
       return res
@@ -209,59 +201,60 @@ const updatePosition = async (req, res) => {
         .json({ success: false, message: "Position not found" });
     }
 
-    await prisma.$transaction(async (tx) => {
-      const updated = await tx.position.updateMany({
-        where: { id, version: Number(version) },
-        data: {
-          title: title || original.title,
-          description: description || original.description,
-          isPublic: isPublic !== undefined ? isPublic : original.isPublic,
-          maxProjects:
-            maxProjects !== undefined
-              ? Number(maxProjects)
-              : original.maxProjects,
-          projectTags: Array.isArray(projectTags)
-            ? projectTags
-            : original.projectTags,
-          version: { increment: 1 },
-        },
+    if (original.version !== Number(version)) {
+      return res.status(409).json({
+        success: false,
+        message: "Conflict: Position has changed. Please refresh page.",
       });
+    }
 
-      if (updated.count === 0) {
-        throw new Error("VersionConflict");
-      }
-
-      if (Array.isArray(selectedAttributes)) {
-        await tx.positionAttribute.deleteMany({ where: { positionId: id } });
-
-        if (selectedAttributes.length > 0) {
-          await tx.positionAttribute.createMany({
-            data: selectedAttributes.map((attr) => ({
-              positionId: id,
-              attributeId: attr.attributeId,
-              order: attr.order !== undefined ? Number(attr.order) : 0,
-            })),
-          });
-        }
-      }
-
-      if (Array.isArray(accessRules)) {
-        await tx.accessRule.deleteMany({ where: { positionId: id } });
-
-        const checkPublic = isPublic !== undefined ? isPublic : origin.isPublic;
-
-        if (!checkPublic && accessRules.length > 0) {
-          await tx.accessRule.createMany({
-            data: accessRules.map((rule) => ({
-              positionId: id,
-              attributeId: rule.attributeId,
-              operator: rule.operator,
-              value: String(rule.value),
-            })),
-          });
-        }
-      }
+    await prisma.position.update({
+      where: { id },
+      data: {
+        title: title || original.title,
+        description: description || original.description,
+        isPublic: isPublic !== undefined ? isPublic : original.isPublic,
+        maxProjects:
+          maxProjects !== undefined
+            ? Number(maxProjects)
+            : original.maxProjects,
+        projectTags: Array.isArray(projectTags)
+          ? projectTags
+          : original.projectTags,
+        version: { increment: 1 },
+      },
     });
+
+    if (Array.isArray(selectedAttributes)) {
+      await prisma.positionAttribute.deleteMany({ where: { positionId: id } });
+
+      if (selectedAttributes.length > 0) {
+        await prisma.positionAttribute.createMany({
+          data: selectedAttributes.map((attr) => ({
+            positionId: id,
+            attributeId: attr.attributeId,
+            order: attr.order !== undefined ? Number(attr.order) : 0,
+          })),
+        });
+      }
+    }
+
+    if (Array.isArray(accessRules)) {
+      await prisma.accessRule.deleteMany({ where: { positionId: id } });
+
+      const checkPublic = isPublic !== undefined ? isPublic : original.isPublic;
+
+      if (!checkPublic && accessRules.length > 0) {
+        await prisma.accessRule.createMany({
+          data: accessRules.map((rule) => ({
+            positionId: id,
+            attributeId: rule.attributeId,
+            operator: rule.operator,
+            value: String(rule.value),
+          })),
+        });
+      }
+    }
 
     const updatedPosition = await prisma.position.findUnique({
       where: { id },
@@ -271,15 +264,8 @@ const updatePosition = async (req, res) => {
       },
     });
 
-    res.json({ success: true, data: updatePosition });
+    res.json({ success: true, data: updatedPosition });
   } catch (error) {
-    if (error.message === "VersionConflict") {
-      return res.status(409).json({
-        success: false,
-        message:
-          "Conflict: This position has been modified by another user. Please reload and try again.",
-      });
-    }
     console.error("Update position error:", error);
     res
       .status(500)

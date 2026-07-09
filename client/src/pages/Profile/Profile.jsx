@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../../utils/api";
 import toast from "react-hot-toast";
 import Swal from "sweetalert2";
 import Loading from "../../components/Loading";
 import ProjectModal from "../../components/ProjectModal";
+import CreateCVModal from "../../components/CreateCVModal";
 import { marked } from "marked";
 
 const Profile = () => {
@@ -11,6 +13,7 @@ const Profile = () => {
   const [attributes, setAttributes] = useState([]);
   const [libraryAttributes, setLibraryAttributes] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [cvs, setCvs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -19,6 +22,11 @@ const Profile = () => {
 
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [projectToEdit, setProjectToEdit] = useState(null);
+
+  const [isCVModalOpen, setIsCVModalOpen] = useState(false);
+  const [selectedCVIds, setSelectedCVIds] = useState([]);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     const loadProfileData = async () => {
@@ -32,6 +40,10 @@ const Profile = () => {
         const libRes = await api.get("/api/attributes");
         if (libRes.data.success) {
           setLibraryAttributes(libRes.data.data);
+        }
+        const cvsRes = await api.get("/api/cvs/my");
+        if (cvsRes.data.success) {
+          setCvs(cvsRes.data.data);
         }
       } catch (err) {
         console.error("Profile load failed:", err);
@@ -235,6 +247,67 @@ const Profile = () => {
     }
   };
 
+  const handleCVGenerated = (cvId) => {
+    setIsCVModalOpen(false);
+    navigate(`/dashboard/cvs/${cvId}`);
+  };
+
+  const handleSelectCVRow = (id) => {
+    if (selectedCVIds.includes(id)) {
+      setSelectedCVIds(selectedCVIds.filter((item) => item !== id));
+    } else {
+      setSelectedCVIds([...selectedCVIds, id]);
+    }
+  };
+
+  const handleSelectAllCVs = (e) => {
+    if (e.target.checked) {
+      setSelectedCVIds(cvs.map((cv) => cv.id));
+    } else {
+      setSelectedCVIds([]);
+    }
+  };
+
+  const handleOpenSelectedCV = () => {
+    if (selectedCVIds.length !== 1) return;
+    navigate(`/dashboard/cvs/${selectedCVIds[0]}`);
+  };
+
+  const handleDeleteSelectedCVs = async () => {
+    if (selectedCVIds.length === 0) return;
+
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: `You are about to delete ${selectedCVIds.length} CV(s). This action cannot be undone.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#EF4444",
+      cancelButtonColor: "#6B7280",
+      confirmButtonText: "Yes, delete!",
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      for (const id of selectedCVIds) {
+        const targetCV = cvs.find((c) => c.id === id);
+        await api.delete(`/api/cvs/${id}`, {
+          data: { version: targetCV.version },
+        });
+      }
+      toast.success("CV(s) deleted successfully!");
+      setCvs((prev) => prev.filter((cv) => !selectedCVIds.includes(cv.id)));
+      setSelectedCVIds([]);
+    } catch (err) {
+      console.error("Delete CV error:", err);
+      if (err.response?.status === 409) {
+        toast.error("Conflict: CV was modified elsewhere. Please refresh.");
+      } else {
+        toast.error("Failed to delete some CVs");
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="text-center p-8">
@@ -351,6 +424,7 @@ const Profile = () => {
           </div>
         );
       }
+
       case "TEXT":
         return (
           <textarea
@@ -551,6 +625,101 @@ const Profile = () => {
         )}
       </div>
 
+      <div className="border border-base-300 p-6 rounded-lg bg-base-200 flex flex-col gap-4">
+        <h3 className="text-lg font-bold border-b border-base-300 pb-2">
+          CVs (Generated CV Profiles)
+        </h3>
+
+        <div className="flex items-center gap-3 p-3 bg-base-100 border border-base-300 rounded-md mb-2 justify-between">
+          <div className="text-sm font-semibold">
+            Selected:{" "}
+            <span className="text-primary">{selectedCVIds.length}</span>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setIsCVModalOpen(true)}
+              className="btn btn-sm btn-primary"
+            >
+              + Create CV
+            </button>
+            <button
+              onClick={handleOpenSelectedCV}
+              disabled={selectedCVIds.length !== 1}
+              className="btn btn-sm btn-neutral"
+            >
+              Open
+            </button>
+            <button
+              onClick={handleDeleteSelectedCVs}
+              disabled={selectedCVIds.length === 0}
+              className="btn btn-sm btn-error"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+
+        {cvs.length === 0 ? (
+          <p className="text-sm text-gray-500">No CV profiles generated yet.</p>
+        ) : (
+          <div className="overflow-x-auto border border-base-300 rounded-md">
+            <table className="table w-full bg-base-100">
+              <thead>
+                <tr className="bg-base-300 text-sm">
+                  <th className="w-12 text-center">
+                    <input
+                      type="checkbox"
+                      checked={
+                        selectedCVIds.length === cvs.length && cvs.length > 0
+                      }
+                      onChange={handleSelectAllCVs}
+                      className="checkbox checkbox-sm"
+                    />
+                  </th>
+                  <th>CV Profile Name</th>
+                  <th>Applied Position</th>
+                  <th>Status</th>
+                  <th>Created At</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cvs.map((cv) => (
+                  <tr key={cv.id} className="hover:bg-base-200 text-sm">
+                    <td className="text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedCVIds.includes(cv.id)}
+                        onChange={() => handleSelectCVRow(cv.id)}
+                        className="checkbox checkbox-sm"
+                      />
+                    </td>
+                    <td
+                      className="font-bold text-primary hover:underline cursor-pointer"
+                      onClick={() => navigate(`/dashboard/cvs/${cv.id}`)}
+                    >
+                      {cv.name}
+                    </td>
+                    <td>{cv.position?.title}</td>
+                    <td>
+                      <span
+                        className={`badge ${
+                          cv.isPublished ? "badge-success" : "badge-warning"
+                        } badge-sm`}
+                      >
+                        {cv.isPublished
+                          ? "Active / Published"
+                          : "Inactive / Draft"}
+                      </span>
+                    </td>
+                    <td>{formatDate(cv.createdAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-base-100 text-base-content border border-base-300 p-6 rounded-lg w-full max-w-md shadow-lg flex flex-col gap-4">
@@ -602,6 +771,12 @@ const Profile = () => {
         onSave={handleProjectSave}
         projectToEdit={projectToEdit}
         userVersion={profileUser?.version}
+      />
+
+      <CreateCVModal
+        isOpen={isCVModalOpen}
+        onClose={() => setIsCVModalOpen(false)}
+        onSave={handleCVGenerated}
       />
     </div>
   );

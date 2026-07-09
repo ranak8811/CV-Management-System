@@ -27,12 +27,16 @@ const CreateCVModal = ({ isOpen, onClose, onSave }) => {
     };
     if (isOpen) {
       loadPositions();
-      setCvName("");
-      setSelectedPositionId("");
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
+
+  const handleClose = () => {
+    setCvName("");
+    setSelectedPositionId("");
+    onClose();
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -51,6 +55,7 @@ const CreateCVModal = ({ isOpen, onClose, onSave }) => {
 
       if (res.data.success) {
         toast.success("CV generated successfully!");
+        handleClose();
         onSave(res.data.data.id);
       }
     } catch (error) {
@@ -120,7 +125,7 @@ const CreateCVModal = ({ isOpen, onClose, onSave }) => {
             <div className="flex justify-end gap-2 mt-4">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={handleClose}
                 className="btn btn-neutral"
               >
                 Cancel
