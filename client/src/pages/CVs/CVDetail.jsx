@@ -3,6 +3,7 @@ import useAuth from "../../hooks/useAuth";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import api from "../../utils/api";
+import Loading from "../../components/Loading";
 
 const CVDetail = () => {
   const { id } = useParams();
@@ -102,6 +103,120 @@ const CVDetail = () => {
 
     return () => clearTimeout(autoSaveTimer);
   }, [unsavedChanges, cv, id]);
+
+  const handleInputChange = (attrId, val) => {
+    setAttributeValues((prev) =>
+      prev.map((attr) =>
+        attr.attributeId === attrId ? { ...attr, value: val } : attr,
+      ),
+    );
+
+    setUnsavedChanges((prev) => ({
+      ...prev,
+      [attrId]: val,
+    }));
+  };
+
+  const handleProjectCheckboxChange = async (projId, isChecked) => {
+    let updatedIds = [...setSelectedProjectIds];
+
+    if (isChecked) {
+      if (updatedIds.length >= cv.position.maxProjects) {
+        toast.error(`Maximum projects allowed is ${cv.position.maxProjects}`);
+        return;
+      }
+      updatedIds.push(projId);
+    } else {
+      updatedIds = updatedIds.filter((pid) => pid !== projId);
+    }
+
+    try {
+      const res = await api.put(`/api/cvs/${id}`, {
+        projectIds: updatedIds,
+        version: cv.version,
+      });
+
+      if (res.data.success) {
+        setSelectedProjectIds(updatedIds);
+        setCv((prev) => ({
+          ...prev,
+          version: res.data.newVersion,
+          projects: prev.projects
+            ? isChecked
+              ? [
+                  ...prev.projects,
+                  candidateProjects.find((p) => p.id === projId),
+                ]
+              : prev.projects.filter((p) => p.id !== projId)
+            : [],
+        }));
+        toast.success("Projects list updated!");
+      }
+    } catch (err) {
+      console.error(err);
+      if (err.response?.status === 409) {
+        toast.error("Version conflict. Please refresh.");
+      } else {
+        toast.error("Failed to update projects");
+      }
+    }
+  };
+
+  const handlePublishToggle = async () => {
+    const isCurrentlyPublished = cv.isPublished;
+    const nextPublishedState = !isCurrentlyPublished;
+    const nextStatus = nextPublishedState ? "Active" : "Inactive";
+
+    try {
+      const res = await api.put(`/api/cvs/${id}`, {
+        isPublished: nextPublishedState,
+        status: nextStatus,
+        version: cv.version,
+      });
+
+      if (res.data.success) {
+        setCv((prev) => ({
+          ...prev,
+          isPublished: nextPublishedState,
+          status: nextStatus,
+          version: res.data.newVersion,
+        }));
+        toast.success(
+          nextPublishedState
+            ? "CV Published! Recruiters can now search and view this CV."
+            : "CV Unpublished to Draft status.",
+        );
+      }
+    } catch (err) {
+      console.error(err);
+      if (err.response?.status === 409) {
+        toast.error("Version conflict. Please refresh.");
+      } else {
+        toast.error("Failed to update publish state");
+      }
+    }
+  };
+
+  const downloadPDF = () => {
+    const element = document.getElementById("cv-pdf-content");
+    const opt = {
+      margin: 0.5,
+      filename: `${cv.name.replace(/\s+/g, "_")}.pdf`,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
+    };
+    html2pdf().set(opt).from(element).save();
+  };
+
+  if (loading) {
+    return (
+      <div className="text-center p-8">
+        <Loading />
+        <span className="block mt-2">Loading CV profile details...</span>
+      </div>
+    );
+  }
 
   return <div></div>;
 };
