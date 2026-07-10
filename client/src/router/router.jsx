@@ -11,6 +11,7 @@ import GitHubCallback from "../components/GitHubCallback";
 import AttributesList from "../pages/Attributes/AttributesList";
 import PositionsList from "../pages/Positions/PositionsList";
 import PositionForm from "../pages/Positions/PositionForm";
+import PositionDetail from "../pages/Positions/PositionDetail";
 import Profile from "../pages/Profile/Profile";
 import CVDetail from "../pages/CVs/CVDetail";
 
@@ -52,7 +53,6 @@ export const router = createBrowserRouter([
         index: true,
         Component: Dashboard,
       },
-
       {
         path: "attributes",
         element: (
@@ -90,6 +90,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <PositionForm />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "positions/:id",
+        element: (
+          <ProtectedRoute>
+            <PositionDetail />
           </ProtectedRoute>
         ),
       },
