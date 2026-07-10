@@ -68,3 +68,5 @@ const createDiscussionPost = async (req, res) => {
     });
   }
 };
+
+export { getDiscussionPosts, createDiscussionPost };
