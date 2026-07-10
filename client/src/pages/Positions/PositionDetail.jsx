@@ -82,6 +82,58 @@ const PositionDetail = () => {
     };
   }, [id, position]);
 
+  useEffect(() => {
+    if (activeTab === "cvs" && isRecruiterOrAdmin && position) {
+      const loadCVs = async () => {
+        setLoadingCVs(true);
+        try {
+          const res = await api.get(`/api/cvs/position/${id}`);
+          if (res.data.success) {
+            setCvs(res.data.data);
+          }
+        } catch (err) {
+          console.error(err);
+          toast.error("Failed to load submitted CVs");
+        } finally {
+          setLoadingCVs(false);
+        }
+      };
+      loadCVs();
+    }
+  }, [activeTab, id, position, isRecruiterOrAdmin]);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [posts]);
+
+  const handleSendComment = async (e) => {
+    e.preventDefault();
+    if (!newComment.trim()) return;
+
+    setSubmittingComment(true);
+    try {
+      await api.post(`/api/discussions/${id}`, {
+        content: newComment,
+      });
+      setNewComment("");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to post comment");
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
+  const handleSelectCV = (cvId) => {
+    if (selectedCVIds.includes(cvId)) {
+      setSelectedCVIds(selectedCVIds.filter((item) => item !== cvId));
+    } else {
+      setSelectedCVIds([...selectedCVIds, cvId]);
+    }
+  };
+
   return <div></div>;
 };
 
