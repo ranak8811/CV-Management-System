@@ -59,13 +59,17 @@ const createDiscussionPost = async (req, res) => {
       },
     });
 
+    const io = req.app.get("io");
+    if (io) {
+      io.to(positionId).emit("newPost", post);
+    }
+
     res.status(201).json({ success: true, data: post });
   } catch (error) {
     console.error("Create discussion post error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to create discussion post",
-    });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to create discussion post" });
   }
 };
 
