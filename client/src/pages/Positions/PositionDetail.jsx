@@ -258,6 +258,21 @@ const PositionDetail = () => {
     );
   }
 
+  const renderMarkdown = (text) => {
+    return { __html: marked.parse(text || "") };
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    return new Date(dateStr).toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   return <div></div>;
 };
 
