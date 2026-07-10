@@ -178,6 +178,86 @@ const PositionDetail = () => {
     }
   };
 
+  const exportCVsToCSV = async () => {
+    if (cvs.length === 0) {
+      toast.error("No CVs available to export");
+      return;
+    }
+
+    try {
+      const allCVDetails = [];
+      for (const cvItem of cvs) {
+        const res = await api.get(`/api/cvs/${cvItem.id}`);
+        if (res.data.success) {
+          allCVDetails.push(res.data.data);
+        }
+      }
+
+      const headers = [
+        "Candidate Name",
+        "Candidate Email",
+        "CV Profile Name",
+        "Published Status",
+        "Likes Count",
+      ];
+      const attrNames = [];
+
+      position.positionAttributes.forEach((pa) => {
+        attrNames.push(pa.attribute.name);
+      });
+
+      const fullHeaders = [...headers, ...attrNames];
+
+      const csvRows = [fullHeaders.join(",")];
+
+      allCVDetails.forEach((item) => {
+        const { cv: cvData, attributeValues } = item;
+        const rowData = [
+          `"${cvData.candidate.name || ""}"`,
+          `"${cvData.candidate.email || ""}"`,
+          `"${cvData.name.replace(/"/g, '""')}"`,
+          `"${cvData.isPublished ? "Published" : "Draft"}"`,
+          cvData.likes ? cvData.likes.length : 0,
+        ];
+
+        position.positionAttributes.forEach((pa) => {
+          const matchedAttr = attributeValues.find(
+            (av) => av.attributeId === pa.attributeId,
+          );
+          const val = matchedAttr ? matchedAttr.value.replace(/"/g, '""') : "";
+          rowData.push(`"${val}"`);
+        });
+
+        csvRows.push(rowData.join(","));
+      });
+
+      const csvContent = "data:text/csv;charset=utf-8," + csvRows.join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute(
+        "download",
+        `${position.title.replace(/\s+/g, "_")}_Submissions.csv`,
+      );
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success("CSV export complete!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to export submitted CVs");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="text-center p-8">
+        <Loading />
+        <span className="block mt-2">Loading position details...</span>
+      </div>
+    );
+  }
+
   return <div></div>;
 };
 
