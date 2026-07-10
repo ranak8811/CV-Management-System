@@ -258,7 +258,6 @@ const updateCV = async (req, res) => {
   const userId = req.user.id;
   const userRole = req.user.role;
   const { id } = req.params;
-
   const { name, status, isPublished, projectIds, version } = req.body;
 
   if (version === undefined) {
@@ -272,11 +271,17 @@ const updateCV = async (req, res) => {
       where: { id },
     });
 
-    if (userRole === "CANDIDATE" && cv.candidateId !== userId) {
-      return res.status(403).json({
-        success: false,
-        message: "Unauthorized access to this CV",
-      });
+    if (!cv) {
+      return res.status(404).json({ success: false, message: "CV not found" });
+    }
+
+    const isOwner = cv.candidateId === userId;
+    const isAdmin = userRole === "ADMIN";
+
+    if (!isOwner && !isAdmin) {
+      return res
+        .status(403)
+        .json({ success: false, message: "Unauthorized to update this CV" });
     }
 
     if (cv.version !== Number(version)) {
@@ -288,9 +293,8 @@ const updateCV = async (req, res) => {
     }
 
     const updateData = {};
-
     if (name) updateData.name = name.trim();
-    if (status) updateData.status = status.trim();
+    if (status) updateData.status = status;
     if (isPublished !== undefined) updateData.isPublished = isPublished;
 
     if (Array.isArray(projectIds)) {
@@ -310,7 +314,7 @@ const updateCV = async (req, res) => {
     res.json({
       success: true,
       data: updatedCV,
-      neVersion: updatedCV.version,
+      newVersion: updatedCV.version,
     });
   } catch (error) {
     console.error("Update CV error:", error);
@@ -344,10 +348,13 @@ const saveCVAttributeValue = async (req, res) => {
       return res.status(404).json({ success: false, message: "CV not found" });
     }
 
-    if (userRole === "CANDIDATE" && cv.candidateId !== userId) {
+    const isOwner = cv.candidateId === userId;
+    const isAdmin = userRole === "ADMIN";
+
+    if (!isOwner && !isAdmin) {
       return res
         .status(403)
-        .json({ success: false, message: "Unauthorized access" });
+        .json({ success: false, message: "Unauthorized to modify this CV" });
     }
 
     if (cv.version !== Number(cvVersion)) {
@@ -357,11 +364,11 @@ const saveCVAttributeValue = async (req, res) => {
       });
     }
 
-    const user = await prisma.user.findUnique({
+    const userRecord = await prisma.user.findUnique({
       where: { id: cv.candidateId },
     });
 
-    if (!user || user.version !== Number(userVersion)) {
+    if (!userRecord || userRecord.version !== Number(userVersion)) {
       return res.status(409).json({
         success: false,
         message: "Conflict: Profile has changed. Please refresh.",
@@ -433,8 +440,13 @@ const deleteCV = async (req, res) => {
       return res.status(404).json({ success: false, message: "CV not found" });
     }
 
-    if (userRole === "CANDIDATE" && cv.candidateId !== userId) {
-      return res.status(403).json({ success: false, message: "Unauthorized" });
+    const isOwner = cv.candidateId === userId;
+    const isAdmin = userRole === "ADMIN";
+
+    if (!isOwner && !isAdmin) {
+      return res
+        .status(403)
+        .json({ success: false, message: "Unauthorized to delete this CV" });
     }
 
     if (cv.version !== Number(version)) {
