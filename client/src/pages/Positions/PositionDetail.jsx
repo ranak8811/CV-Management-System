@@ -134,6 +134,50 @@ const PositionDetail = () => {
     }
   };
 
+  const handleSelectAllCVs = (e) => {
+    if (e.target.checked) {
+      setSelectedCVIds(cvs.map((c) => c.id));
+    } else {
+      setSelectedCVIds([]);
+    }
+  };
+
+  const handleOpenSelectedCV = () => {
+    if (selectedCVIds.length !== 1) return;
+    navigate(`/dashboard/cvs/${selectedCVIds[0]}`);
+  };
+
+  const handleDeleteSelectedCVs = async () => {
+    if (selectedCVIds.length === 0) return;
+
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: `Delete ${selectedCVIds.length} submitted CV(s)?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#EF4444",
+      cancelButtonColor: "#6B7280",
+      confirmButtonText: "Yes, delete!",
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      for (const cvId of selectedCVIds) {
+        const targetCV = cvs.find((c) => c.id === cvId);
+        await api.delete(`/api/cvs/${cvId}`, {
+          data: { version: targetCV.version || 1 },
+        });
+      }
+      toast.success("CV(s) deleted successfully!");
+      setCvs((prev) => prev.filter((c) => !selectedCVIds.includes(c.id)));
+      setSelectedCVIds([]);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete selected CVs");
+    }
+  };
+
   return <div></div>;
 };
 
