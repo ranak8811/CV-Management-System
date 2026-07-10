@@ -21,6 +21,7 @@ const CVDetail = () => {
   const [unsavedChanges, setUnsavedChanges] = useState({});
 
   const isCandidateOwner = cv && user && cv.candidateId === user.id;
+  const canEditCV = isCandidateOwner || (user && user.role === "ADMIN");
 
   useEffect(() => {
     const loadCVData = async () => {
@@ -262,7 +263,7 @@ const CVDetail = () => {
     const value = attr.value;
     const isEmpty = value.trim() === "";
 
-    if (!isCandidateOwner) {
+    if (!canEditCV) {
       if (isEmpty) {
         return (
           <span className="text-red-500 font-semibold italic text-sm">
@@ -459,7 +460,7 @@ const CVDetail = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          {isCandidateOwner && (
+          {canEditCV && (
             <button
               onClick={handlePublishToggle}
               disabled={!allAttributesFilled}
@@ -474,7 +475,7 @@ const CVDetail = () => {
         </div>
       </div>
 
-      {!allAttributesFilled && isCandidateOwner && (
+      {!allAttributesFilled && canEditCV && (
         <div className="p-3 bg-red-100 border-l-4 border-red-500 text-red-700 text-sm">
           Please fill out all red-bordered required template attributes to
           enable the **Publish** action.
@@ -571,7 +572,7 @@ const CVDetail = () => {
           </div>
         </div>
 
-        {isCandidateOwner && (
+        {canEditCV && (
           <div className="flex flex-col gap-6">
             <div className="border border-base-300 p-4 rounded-lg bg-base-200 flex flex-col gap-3">
               <h3 className="font-bold border-b border-base-300 pb-2 text-sm">
