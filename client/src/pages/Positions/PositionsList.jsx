@@ -127,7 +127,10 @@ const PositionsList = () => {
         </div>
 
         <div className="flex gap-2">
-          <button onClick={handleAddNewClick} className="btn btn-sm btn-primary">
+          <button
+            onClick={handleAddNewClick}
+            className="btn btn-sm btn-primary"
+          >
             + Add New
           </button>
 
@@ -182,6 +185,7 @@ const PositionsList = () => {
                 <th>Visibility</th>
                 <th>Attributes Included</th>
                 <th>Submitted CVs</th>
+                <th>Join Discussion</th>
               </tr>
             </thead>
 
@@ -215,6 +219,12 @@ const PositionsList = () => {
                     <span className="font-semibold text-primary">
                       {pos._count?.cvs || 0}
                     </span>
+                  </td>
+                  <td
+                    onClick={() => navigate(`/dashboard/positions/${pos.id}`)}
+                    className="font-bold text-primary hover:underline cursor-pointer"
+                  >
+                    {pos.title}
                   </td>
                 </tr>
               ))}

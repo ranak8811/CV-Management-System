@@ -45,21 +45,20 @@ const DashboardLayout = () => {
                 My Profile
               </Link>
 
+              <Link
+                to="/dashboard/positions"
+                className="p-2 hover:bg-base-300 rounded font-semibold block text-primary"
+              >
+                Positions
+              </Link>
+
               {(user?.role === "RECRUITER" || user?.role === "ADMIN") && (
-                <>
-                  <Link
-                    to="/dashboard/attributes"
-                    className="p-2 hover:bg-base-300 rounded font-semibold block text-primary"
-                  >
-                    Attribute Library
-                  </Link>
-                  <Link
-                    to="/dashboard/positions"
-                    className="p-2 hover:bg-base-300 rounded font-semibold block text-primary"
-                  >
-                    Positions
-                  </Link>
-                </>
+                <Link
+                  to="/dashboard/attributes"
+                  className="p-2 hover:bg-base-300 rounded font-semibold block text-primary"
+                >
+                  Attribute Library
+                </Link>
               )}
             </nav>
           </div>
