@@ -11,6 +11,7 @@ import profileRoutes from "./routes/profileRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
 import cvRoutes from "./routes/cvRoutes.js";
 import discussionRoutes from "./routes/discussionRoutes.js";
+import publicRoutes from "./routes/publicRoutes.js";
 
 dotenv.config();
 
@@ -53,6 +54,7 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/cvs", cvRoutes);
 app.use("/api/discussions", discussionRoutes);
+app.use("/api/public", publicRoutes);
 
 io.on("connection", (socket) => {
   socket.on("joinPosition", (positionId) => {
