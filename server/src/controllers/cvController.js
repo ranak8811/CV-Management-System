@@ -483,28 +483,12 @@ const toggleLikeCV = async (req, res) => {
     const cv = await prisma.cV.findUnique({
       where: { id },
     });
-  } catch (error) {
-    console.error("Toggle like error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to toggle like on CV" });
-  }
 
-  if (!cv) {
-    return res.status(404).json({ success: false, message: "CV not found" });
-  }
+    if (!cv) {
+      return res.status(404).json({ success: false, message: "CV not found" });
+    }
 
-  const existingLike = await prisma.cVLike.findUnique({
-    where: {
-      cvId_userId: {
-        cvId: id,
-        userId,
-      },
-    },
-  });
-
-  if (existingLike) {
-    await prisma.cVLike.delete({
+    const existingLike = await prisma.cVLike.findUnique({
       where: {
         cvId_userId: {
           cvId: id,
@@ -512,24 +496,35 @@ const toggleLikeCV = async (req, res) => {
         },
       },
     });
-    return res.json({
-      success: true,
-      liked: false,
-      message: "Like removed",
-    });
-  } else {
-    await prisma.cVLike.create({
-      data: {
-        cvId: id,
-        userId,
-      },
-    });
 
-    return res.json({
-      success: true,
-      liked: true,
-      message: "CV liked successfully",
-    });
+    if (existingLike) {
+      await prisma.cVLike.delete({
+        where: {
+          cvId_userId: {
+            cvId: id,
+            userId,
+          },
+        },
+      });
+      return res.json({ success: true, liked: false, message: "Like removed" });
+    } else {
+      await prisma.cVLike.create({
+        data: {
+          cvId: id,
+          userId,
+        },
+      });
+      return res.json({
+        success: true,
+        liked: true,
+        message: "CV liked successfully",
+      });
+    }
+  } catch (error) {
+    console.error("Toggle like error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to toggle like on CV" });
   }
 };
 
