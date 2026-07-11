@@ -7,6 +7,7 @@ import {
   updateCV,
   saveCVAttributeValue,
   deleteCV,
+  toggleLikeCV,
 } from "../controllers/cvController.js";
 import { protect, authorize } from "../middlewares/authMiddleware.js";
 
@@ -19,5 +20,6 @@ router.post("/", protect, createCV);
 router.put("/:id", protect, updateCV);
 router.post("/:id/attribute", protect, saveCVAttributeValue);
 router.delete("/:id", protect, deleteCV);
+router.post("/:id/like", protect, toggleLikeCV);
 
 export default router;
