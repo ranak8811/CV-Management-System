@@ -467,6 +467,72 @@ const deleteCV = async (req, res) => {
   }
 };
 
+const toggleLikeCV = async (req, res) => {
+  const userId = req.user.id;
+  const userRole = req.user.role;
+  const { id } = req.params;
+
+  if (userRole !== "RECRUITER" && userRole !== "ADMIN") {
+    return res.status(403).json({
+      success: false,
+      message: "Only Recruiters and Admins are allowed to like CVs",
+    });
+  }
+
+  try {
+    const cv = await prisma.cV.findUnique({
+      where: { id },
+    });
+  } catch (error) {
+    console.error("Toggle like error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to toggle like on CV" });
+  }
+
+  if (!cv) {
+    return res.status(404).json({ success: false, message: "CV not found" });
+  }
+
+  const existingLike = await prisma.cVLike.findUnique({
+    where: {
+      cvId_userId: {
+        cvId: id,
+        userId,
+      },
+    },
+  });
+
+  if (existingLike) {
+    await prisma.cVLike.delete({
+      where: {
+        cvId_userId: {
+          cvId: id,
+          userId,
+        },
+      },
+    });
+    return res.json({
+      success: true,
+      liked: false,
+      message: "Like removed",
+    });
+  } else {
+    await prisma.cVLike.create({
+      data: {
+        cvId: id,
+        userId,
+      },
+    });
+
+    return res.json({
+      success: true,
+      liked: true,
+      message: "CV liked successfully",
+    });
+  }
+};
+
 export {
   createCV,
   getCVById,
@@ -475,4 +541,5 @@ export {
   updateCV,
   saveCVAttributeValue,
   deleteCV,
+  toggleLikeCV,
 };
