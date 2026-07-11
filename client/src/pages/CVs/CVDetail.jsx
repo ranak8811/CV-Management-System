@@ -19,9 +19,13 @@ const CVDetail = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [unsavedChanges, setUnsavedChanges] = useState({});
+  const [isLiked, setIsLiked] = useState(false);
+  const [likesCount, setLikesCount] = useState(0);
 
   const isCandidateOwner = cv && user && cv.candidateId === user.id;
   const canEditCV = isCandidateOwner || (user && user.role === "ADMIN");
+  const isRecruiterOrAdmin =
+    user && (user.role === "RECRUITER" || user.role === "ADMIN");
 
   useEffect(() => {
     const loadCVData = async () => {
@@ -34,6 +38,12 @@ const CVDetail = () => {
           setSelectedProjectIds(
             cvData.projects ? cvData.projects.map((p) => p.id) : [],
           );
+
+          setLikesCount(cvData.likes ? cvData.likes.length : 0);
+          const hasUserLiked = cvData.likes
+            ? cvData.likes.some((l) => l.userId === user?.id)
+            : false;
+          setIsLiked(hasUserLiked);
 
           const projectsRes = await api.get("/api/profile");
           if (projectsRes.data.success) {
@@ -49,7 +59,7 @@ const CVDetail = () => {
       }
     };
     loadCVData();
-  }, [id, navigate]);
+  }, [id, navigate, user?.id]);
 
   useEffect(() => {
     if (Object.keys(unsavedChanges).length === 0) return;
@@ -243,6 +253,20 @@ const CVDetail = () => {
         document.body.style.color = origBodyColor;
         document.documentElement.style.color = origHtmlColor;
       });
+  };
+
+  const handleLikeToggle = async () => {
+    try {
+      const res = await api.post(`/api/cvs/${id}/like`);
+      if (res.data.success) {
+        setIsLiked(res.data.liked);
+        setLikesCount((prev) => (res.data.liked ? prev + 1 : prev - 1));
+        toast.success(res.data.message);
+      }
+    } catch (err) {
+      console.error("Like error:", err);
+      toast.error("Failed to toggle like on this CV");
+    }
   };
 
   if (loading) {
@@ -460,6 +484,14 @@ const CVDetail = () => {
           </p>
         </div>
         <div className="flex gap-2">
+          {isRecruiterOrAdmin && (
+            <button
+              onClick={handleLikeToggle}
+              className={`btn btn-sm ${isLiked ? "btn-error text-white" : "btn-outline"}`}
+            >
+              {isLiked ? `Liked ❤️ (${likesCount})` : `Like 🤍 (${likesCount})`}
+            </button>
+          )}
           {canEditCV && (
             <button
               onClick={handlePublishToggle}
