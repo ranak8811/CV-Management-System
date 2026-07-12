@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../utils/api";
 import toast from "react-hot-toast";
 import Swal from "sweetalert2";
@@ -9,12 +10,9 @@ import CreateCVModal from "../../components/CreateCVModal";
 import { marked } from "marked";
 
 const Profile = () => {
-  const [profileUser, setProfileUser] = useState(null);
-  const [attributes, setAttributes] = useState([]);
-  const [libraryAttributes, setLibraryAttributes] = useState([]);
-  const [projects, setProjects] = useState([]);
-  const [cvs, setCvs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [unsavedChanges, setUnsavedChanges] = useState({});
@@ -26,34 +24,39 @@ const Profile = () => {
   const [isCVModalOpen, setIsCVModalOpen] = useState(false);
   const [selectedCVIds, setSelectedCVIds] = useState([]);
 
-  const navigate = useNavigate();
+  const [attrSearch, setAttrSearch] = useState("");
+  const [attrCategory, setAttrCategory] = useState("");
+  const [recentlyUsedIds, setRecentlyUsedIds] = useState(() =>
+    JSON.parse(localStorage.getItem("recently_used_attrs") || "[]"),
+  );
 
-  useEffect(() => {
-    const loadProfileData = async () => {
-      try {
-        const res = await api.get("/api/profile");
-        if (res.data.success) {
-          setProfileUser(res.data.data.user);
-          setAttributes(res.data.data.attributes);
-          setProjects(res.data.data.projects || []);
-        }
-        const libRes = await api.get("/api/attributes");
-        if (libRes.data.success) {
-          setLibraryAttributes(libRes.data.data);
-        }
-        const cvsRes = await api.get("/api/cvs/my");
-        if (cvsRes.data.success) {
-          setCvs(cvsRes.data.data);
-        }
-      } catch (err) {
-        console.error("Profile load failed:", err);
-        toast.error("Failed to load profile details");
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadProfileData();
-  }, []);
+  const { data: profileData, isLoading: isLoadingProfile } = useQuery({
+    queryKey: ["profile"],
+    queryFn: async () => {
+      const res = await api.get("/api/profile");
+      return res.data.success ? res.data.data : null;
+    },
+  });
+
+  const profileUser = profileData?.user;
+  const attributes = profileData?.attributes || [];
+  const projects = profileData?.projects || [];
+
+  const { data: libraryAttributes = [] } = useQuery({
+    queryKey: ["attributes"],
+    queryFn: async () => {
+      const res = await api.get("/api/attributes");
+      return res.data.success ? res.data.data : [];
+    },
+  });
+
+  const { data: cvs = [], isLoading: isLoadingCVs } = useQuery({
+    queryKey: ["my-cvs"],
+    queryFn: async () => {
+      const res = await api.get("/api/cvs/my");
+      return res.data.success ? res.data.data : [];
+    },
+  });
 
   useEffect(() => {
     if (Object.keys(unsavedChanges).length === 0) return;
@@ -72,7 +75,7 @@ const Profile = () => {
             currentVersion = res.data.newVersion;
           }
         }
-        setProfileUser((prev) => ({ ...prev, version: currentVersion }));
+        queryClient.invalidateQueries({ queryKey: ["profile"] });
         setUnsavedChanges({});
         toast.success("Profile changes auto-saved!");
       } catch (err) {
@@ -90,7 +93,7 @@ const Profile = () => {
     }, 5000);
 
     return () => clearTimeout(autoSaveTimer);
-  }, [unsavedChanges, profileUser?.version]);
+  }, [unsavedChanges, profileUser?.version, queryClient]);
 
   const uploadImageObj = async (image) => {
     const apiKey = import.meta.env.VITE_imgbb_key;
@@ -103,58 +106,65 @@ const Profile = () => {
         body: formData,
       },
     );
-    const data = await response.json();
-    if (data.success) {
-      return data.data.url;
+    const result = await response.json();
+    return result.success ? result.data.url : null;
+  };
+
+  const handleImageFileChange = async (e, attrId) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      const imageUrl = await uploadImageObj(file);
+      if (imageUrl) {
+        const res = await api.post("/api/profile/attribute", {
+          attributeId: attrId,
+          value: imageUrl,
+          version: profileUser.version,
+        });
+        if (res.data.success) {
+          queryClient.invalidateQueries({ queryKey: ["profile"] });
+          toast.success("Photo uploaded successfully!");
+        }
+      } else {
+        toast.error("Failed to upload image to host");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Photo upload error");
+    } finally {
+      setUploadingImage(false);
     }
-    throw new Error("ImgBB upload failed");
   };
 
   const handleInputChange = (attrId, val) => {
-    setAttributes((prev) =>
-      prev.map((attr) =>
-        attr.attributeId === attrId ? { ...attr, value: val } : attr,
-      ),
-    );
     setUnsavedChanges((prev) => ({
       ...prev,
       [attrId]: val,
     }));
   };
 
-  const handleImageUpload = async (attrId, file) => {
-    if (!file) return;
-    setUploadingImage(true);
-    try {
-      const url = await uploadImageObj(file);
-      handleInputChange(attrId, url);
-      toast.success("Image uploaded successfully!");
-    } catch (err) {
-      console.error(err);
-      toast.error("Image upload failed");
-    } finally {
-      setUploadingImage(false);
-    }
+  const trackRecentlyUsed = (id) => {
+    const updated = [id, ...recentlyUsedIds.filter((x) => x !== id)].slice(
+      0,
+      5,
+    );
+    setRecentlyUsedIds(updated);
+    localStorage.setItem("recently_used_attrs", JSON.stringify(updated));
   };
 
   const handleAddAttribute = async (attrId) => {
     try {
-      const res = await api.post("/api/profile/attribute/add", {
+      const res = await api.post("/api/profile/attribute", {
         attributeId: attrId,
+        value: "",
         version: profileUser.version,
       });
 
       if (res.data.success) {
-        setProfileUser((prev) => ({ ...prev, version: res.data.newVersion }));
-        const libAttr = libraryAttributes.find((la) => la.id === attrId);
-        setAttributes((prev) => [
-          ...prev,
-          {
-            attributeId: attrId,
-            value: "",
-            attribute: libAttr,
-          },
-        ]);
+        trackRecentlyUsed(attrId);
+        queryClient.invalidateQueries({ queryKey: ["profile"] });
         toast.success("Attribute added to profile!");
         setIsAddModalOpen(false);
       }
@@ -188,8 +198,7 @@ const Profile = () => {
       });
 
       if (res.data.success) {
-        setProfileUser((prev) => ({ ...prev, version: res.data.newVersion }));
-        setAttributes((prev) => prev.filter((a) => a.attributeId !== attrId));
+        queryClient.invalidateQueries({ queryKey: ["profile"] });
         toast.success("Attribute removed from profile");
       }
     } catch (err) {
@@ -202,15 +211,8 @@ const Profile = () => {
     }
   };
 
-  const handleProjectSave = (savedProject, newVersion) => {
-    setProfileUser((prev) => ({ ...prev, version: newVersion }));
-    if (projectToEdit) {
-      setProjects((prev) =>
-        prev.map((p) => (p.id === savedProject.id ? savedProject : p)),
-      );
-    } else {
-      setProjects((prev) => [savedProject, ...prev]);
-    }
+  const handleProjectSave = () => {
+    queryClient.invalidateQueries({ queryKey: ["profile"] });
     setIsProjectModalOpen(false);
   };
 
@@ -233,8 +235,7 @@ const Profile = () => {
       });
 
       if (res.data.success) {
-        setProfileUser((prev) => ({ ...prev, version: res.data.newVersion }));
-        setProjects((prev) => prev.filter((p) => p.id !== projId));
+        queryClient.invalidateQueries({ queryKey: ["profile"] });
         toast.success("Project deleted successfully");
       }
     } catch (err) {
@@ -247,22 +248,22 @@ const Profile = () => {
     }
   };
 
-  const handleCVGenerated = (cvId) => {
+  const handleCVGenerated = () => {
+    queryClient.invalidateQueries({ queryKey: ["my-cvs"] });
     setIsCVModalOpen(false);
-    navigate(`/dashboard/cvs/${cvId}`);
   };
 
-  const handleSelectCVRow = (id) => {
-    if (selectedCVIds.includes(id)) {
-      setSelectedCVIds(selectedCVIds.filter((item) => item !== id));
+  const handleSelectCVRow = (cvId) => {
+    if (selectedCVIds.includes(cvId)) {
+      setSelectedCVIds(selectedCVIds.filter((id) => id !== cvId));
     } else {
-      setSelectedCVIds([...selectedCVIds, id]);
+      setSelectedCVIds([...selectedCVIds, cvId]);
     }
   };
 
   const handleSelectAllCVs = (e) => {
     if (e.target.checked) {
-      setSelectedCVIds(cvs.map((cv) => cv.id));
+      setSelectedCVIds(visibleCVs.map((cv) => cv.id));
     } else {
       setSelectedCVIds([]);
     }
@@ -278,7 +279,7 @@ const Profile = () => {
 
     const result = await Swal.fire({
       title: "Are you sure?",
-      text: `You are about to delete ${selectedCVIds.length} CV(s). This action cannot be undone.`,
+      text: "Delete selected CV profiles?",
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#EF4444",
@@ -289,26 +290,50 @@ const Profile = () => {
     if (!result.isConfirmed) return;
 
     try {
-      for (const id of selectedCVIds) {
-        const targetCV = cvs.find((c) => c.id === id);
-        await api.delete(`/api/cvs/${id}`, {
-          data: { version: targetCV.version },
+      for (const cvId of selectedCVIds) {
+        const matched = cvs.find((c) => c.id === cvId);
+        await api.delete(`/api/cvs/${cvId}`, {
+          data: { version: matched.version },
         });
       }
-      toast.success("CV(s) deleted successfully!");
-      setCvs((prev) => prev.filter((cv) => !selectedCVIds.includes(cv.id)));
+      queryClient.invalidateQueries({ queryKey: ["my-cvs"] });
+      toast.success("Selected CVs deleted successfully");
       setSelectedCVIds([]);
     } catch (err) {
-      console.error("Delete CV error:", err);
-      if (err.response?.status === 409) {
-        toast.error("Conflict: CV was modified elsewhere. Please refresh.");
-      } else {
-        toast.error("Failed to delete some CVs");
-      }
+      console.error(err);
+      toast.error("Failed to delete some CVs");
     }
   };
 
-  if (loading) {
+  const checkCandidateAccess = (pos, candidateAttrs) => {
+    if (!pos) return true;
+    if (pos.isPublic) return true;
+    if (!pos.accessRules || pos.accessRules.length === 0) return true;
+
+    return pos.accessRules.every((rule) => {
+      const matched = candidateAttrs.find(
+        (ca) => ca.attributeId === rule.attributeId,
+      );
+      const candidateVal = matched ? String(matched.value) : "";
+
+      switch (rule.operator) {
+        case "EQUALS":
+          return candidateVal.toLowerCase() === rule.value.toLowerCase();
+        case "GREATER_THAN":
+          return Number(candidateVal) > Number(rule.value);
+        case "LESS_THAN":
+          return Number(candidateVal) < Number(rule.value);
+        case "CONTAINS":
+          return candidateVal.toLowerCase().includes(rule.value.toLowerCase());
+        case "IS_CHECKED":
+          return candidateVal === "true";
+        default:
+          return true;
+      }
+    });
+  };
+
+  if (isLoadingProfile || isLoadingCVs) {
     return (
       <div className="text-center p-8">
         <Loading />
@@ -338,9 +363,28 @@ const Profile = () => {
       ),
   );
 
+  const filteredLibraryAttrs = availableLibraryAttrs.filter((la) => {
+    const matchesSearch = la.name
+      .toLowerCase()
+      .startsWith(attrSearch.toLowerCase());
+    const matchesCategory = !attrCategory || la.category === attrCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  const categories = Array.from(
+    new Set(availableLibraryAttrs.map((a) => a.category)),
+  );
+
+  const visibleCVs = cvs.filter((cv) =>
+    checkCandidateAccess(cv.position, attributes),
+  );
+
   const renderInputField = (attr) => {
     const { type, name, options } = attr.attribute;
-    const value = attr.value;
+    const value =
+      unsavedChanges[attr.attributeId] !== undefined
+        ? unsavedChanges[attr.attributeId]
+        : attr.value;
 
     switch (type) {
       case "BOOLEAN":
@@ -424,7 +468,6 @@ const Profile = () => {
           </div>
         );
       }
-
       case "TEXT":
         return (
           <textarea
@@ -449,15 +492,12 @@ const Profile = () => {
             <input
               type="file"
               accept="image/*"
+              onChange={(e) => handleImageFileChange(e, attr.attributeId)}
+              className="file-input file-input-bordered file-input-md w-full"
               disabled={uploadingImage}
-              onChange={(e) =>
-                handleImageUpload(attr.attributeId, e.target.files[0])
-              }
-              className="file-input file-input-bordered file-input-sm w-full"
             />
           </div>
         );
-      case "STRING":
       default:
         return (
           <input
@@ -482,39 +522,49 @@ const Profile = () => {
     return new Date(dateStr).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
+      day: "numeric",
     });
   };
 
   return (
-    <div className="p-4 font-sans bg-base-100 text-base-content min-h-screen max-w-3xl mx-auto flex flex-col gap-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">My Personal Profile</h2>
+    <div className="p-4 font-sans bg-base-100 text-base-content min-h-screen max-w-4xl mx-auto flex flex-col gap-8">
+      <div className="flex justify-between items-center border-b border-base-300 pb-4">
+        <div>
+          <h2 className="text-2xl font-bold">My Personal Profile</h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Keep your profile details and attribute records up to date.
+          </p>
+        </div>
         {saving && (
-          <span className="text-xs text-primary flex items-center gap-1">
-            <span className="loading loading-spinner loading-xs"></span>
-            Saving...
+          <span className="badge badge-primary py-3">
+            Auto-saving changes...
           </span>
         )}
       </div>
 
       <div className="border border-base-300 p-6 rounded-lg bg-base-200 flex flex-col gap-4">
-        <h3 className="text-lg font-bold border-b border-base-300 pb-2">
-          Me (Undeletable Attributes)
+        <h3 className="text-lg font-bold border-b border-base-300 pb-2 text-primary">
+          Me (Personal Info)
         </h3>
-        {meAttrs.map((attr) => (
-          <div key={attr.attributeId} className="flex flex-col gap-1">
-            <label className="text-sm font-semibold">
-              {attr.attribute.name}
-            </label>
-            {renderInputField(attr)}
-          </div>
-        ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {meAttrs.map((attr) => (
+            <div
+              key={attr.id}
+              className="flex flex-col gap-1.5 bg-base-100 p-3 rounded border border-base-300"
+            >
+              <label className="text-xs font-bold text-gray-500 uppercase">
+                {attr.attribute.name}
+              </label>
+              {renderInputField(attr)}
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="border border-base-300 p-6 rounded-lg bg-base-200 flex flex-col gap-4">
         <div className="flex justify-between items-center border-b border-base-300 pb-2">
-          <h3 className="text-lg font-bold">
-            Info (Custom Library Attributes)
+          <h3 className="text-lg font-bold text-primary">
+            Custom Profile Attributes
           </h3>
           <button
             onClick={() => setIsAddModalOpen(true)}
@@ -525,42 +575,42 @@ const Profile = () => {
         </div>
 
         {infoAttrs.length === 0 ? (
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 italic">
             No custom attributes added yet.
           </p>
         ) : (
-          infoAttrs.map((attr) => (
-            <div
-              key={attr.attributeId}
-              className="border border-base-300 p-4 rounded bg-base-100 flex flex-col gap-2"
-            >
-              <div>
-                <label className="text-sm font-semibold">
-                  {attr.attribute.name}
-                </label>
-                <span className="text-xs text-gray-400 block mt-0.5">
-                  Category: {attr.attribute.category} | Type:{" "}
-                  {attr.attribute.type}
-                </span>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="flex-1">{renderInputField(attr)}</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {infoAttrs.map((attr) => (
+              <div
+                key={attr.id}
+                className="bg-base-100 p-4 rounded border border-base-300 flex flex-col gap-3 relative"
+              >
                 <button
-                  type="button"
                   onClick={() => handleRemoveAttribute(attr.attributeId)}
-                  className="btn btn-error btn-sm text-white"
+                  className="absolute top-2 right-2 text-red-500 font-bold hover:underline text-xs"
                 >
                   Remove
                 </button>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-gray-400 font-semibold">
+                    {attr.attribute.category}
+                  </span>
+                  <span className="font-bold text-sm">
+                    {attr.attribute.name}
+                  </span>
+                </div>
+                {renderInputField(attr)}
               </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
 
       <div className="border border-base-300 p-6 rounded-lg bg-base-200 flex flex-col gap-4">
         <div className="flex justify-between items-center border-b border-base-300 pb-2">
-          <h3 className="text-lg font-bold">Projects</h3>
+          <h3 className="text-lg font-bold text-primary">
+            Projects & Experience
+          </h3>
           <button
             onClick={() => {
               setProjectToEdit(null);
@@ -573,26 +623,28 @@ const Profile = () => {
         </div>
 
         {projects.length === 0 ? (
-          <p className="text-sm text-gray-500">No projects added yet.</p>
+          <p className="text-sm text-gray-500 italic">
+            No projects recorded yet.
+          </p>
         ) : (
           projects.map((proj) => (
             <div
               key={proj.id}
-              className="border border-base-300 p-4 rounded bg-base-100 flex flex-col gap-3 relative"
+              className="bg-base-100 p-4 rounded border border-base-300 flex flex-col gap-2 relative"
             >
-              <div className="absolute top-3 right-3 flex gap-1">
+              <div className="absolute top-2 right-2 flex gap-2">
                 <button
                   onClick={() => {
                     setProjectToEdit(proj);
                     setIsProjectModalOpen(true);
                   }}
-                  className="btn btn-neutral btn-xs"
+                  className="text-primary font-bold hover:underline text-xs"
                 >
                   Edit
                 </button>
                 <button
                   onClick={() => handleDeleteProject(proj.id)}
-                  className="btn btn-error btn-xs text-white"
+                  className="text-red-500 font-bold hover:underline text-xs"
                 >
                   Delete
                 </button>
@@ -626,7 +678,7 @@ const Profile = () => {
       </div>
 
       <div className="border border-base-300 p-6 rounded-lg bg-base-200 flex flex-col gap-4">
-        <h3 className="text-lg font-bold border-b border-base-300 pb-2">
+        <h3 className="text-lg font-bold border-b border-base-300 pb-2 text-primary">
           CVs (Generated CV Profiles)
         </h3>
 
@@ -659,8 +711,10 @@ const Profile = () => {
           </div>
         </div>
 
-        {cvs.length === 0 ? (
-          <p className="text-sm text-gray-500">No CV profiles generated yet.</p>
+        {visibleCVs.length === 0 ? (
+          <p className="text-sm text-gray-500 italic">
+            No CV profiles generated yet (or access rules lost).
+          </p>
         ) : (
           <div className="overflow-x-auto border border-base-300 rounded-md">
             <table className="table w-full bg-base-100">
@@ -670,7 +724,8 @@ const Profile = () => {
                     <input
                       type="checkbox"
                       checked={
-                        selectedCVIds.length === cvs.length && cvs.length > 0
+                        selectedCVIds.length === visibleCVs.length &&
+                        visibleCVs.length > 0
                       }
                       onChange={handleSelectAllCVs}
                       className="checkbox checkbox-sm"
@@ -683,7 +738,7 @@ const Profile = () => {
                 </tr>
               </thead>
               <tbody>
-                {cvs.map((cv) => (
+                {visibleCVs.map((cv) => (
                   <tr key={cv.id} className="hover:bg-base-200 text-sm">
                     <td className="text-center">
                       <input
@@ -725,38 +780,93 @@ const Profile = () => {
           <div className="bg-base-100 text-base-content border border-base-300 p-6 rounded-lg w-full max-w-md shadow-lg flex flex-col gap-4">
             <h3 className="text-lg font-bold">Add Custom Attribute</h3>
 
-            {availableLibraryAttrs.length === 0 ? (
-              <p className="text-sm text-gray-500 py-4">
-                No other library attributes available to add.
-              </p>
-            ) : (
-              <div className="flex flex-col gap-2 max-h-60 overflow-y-auto pr-1">
-                {availableLibraryAttrs.map((la) => (
+            <div className="flex flex-col gap-2">
+              <input
+                type="text"
+                placeholder="Search attributes by prefix..."
+                value={attrSearch}
+                onChange={(e) => setAttrSearch(e.target.value)}
+                className="input input-bordered w-full input-sm"
+              />
+
+              <select
+                value={attrCategory}
+                onChange={(e) => setAttrCategory(e.target.value)}
+                className="select select-bordered w-full select-sm"
+              >
+                <option value="">-- All Categories --</option>
+                {categories.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {recentlyUsedIds.length > 0 && (
+              <div className="border-t border-base-300 pt-2 flex flex-col gap-1.5">
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                  Recently Used
+                </span>
+                <div className="flex flex-wrap gap-1">
+                  {recentlyUsedIds
+                    .map((id) => libraryAttributes.find((la) => la.id === id))
+                    .filter(
+                      (la) =>
+                        la && !attributes.some((a) => a.attributeId === la.id),
+                    )
+                    .map((la) => (
+                      <button
+                        key={la.id}
+                        onClick={() => handleAddAttribute(la.id)}
+                        className="btn btn-xs btn-outline btn-neutral"
+                      >
+                        {la.name}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            <div className="border-t border-base-300 pt-2 flex-1 max-h-56 overflow-y-auto pr-1 flex flex-col gap-2 mt-1">
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                Available Attributes
+              </span>
+              {filteredLibraryAttrs.length === 0 ? (
+                <p className="text-xs text-gray-500 italic py-2">
+                  No matching library attributes found.
+                </p>
+              ) : (
+                filteredLibraryAttrs.map((la) => (
                   <div
                     key={la.id}
-                    className="flex justify-between items-center p-2 hover:bg-base-200 rounded border border-base-300"
+                    className="flex justify-between items-center p-2 hover:bg-base-200 rounded border border-base-300 bg-base-100"
                   >
                     <div>
-                      <span className="font-semibold text-sm">{la.name}</span>
-                      <span className="text-xs text-gray-400 block">
+                      <span className="font-semibold text-xs">{la.name}</span>
+                      <span className="text-[10px] text-gray-400 block">
                         {la.category} | {la.type}
                       </span>
                     </div>
                     <button
                       onClick={() => handleAddAttribute(la.id)}
-                      className="btn btn-xs btn-primary"
+                      className="btn btn-xs btn-primary text-[10px]"
                     >
                       Add
                     </button>
                   </div>
-                ))}
-              </div>
-            )}
+                ))
+              )}
+            </div>
 
-            <div className="flex justify-end gap-2 mt-4">
+            <div className="flex justify-end gap-2 mt-4 border-t border-base-300 pt-3">
               <button
-                onClick={() => setIsAddModalOpen(false)}
-                className="btn btn-neutral"
+                onClick={() => {
+                  setIsAddModalOpen(false);
+                  setAttrSearch("");
+                  setAttrCategory("");
+                }}
+                className="btn btn-neutral btn-sm"
               >
                 Close
               </button>
