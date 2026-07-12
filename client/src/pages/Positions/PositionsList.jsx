@@ -1,41 +1,59 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import Swal from "sweetalert2";
 import api from "../../utils/api";
+import Loading from "../../components/Loading";
+import useAuth from "../../hooks/useAuth";
 
 const PositionsList = () => {
-  const [positions, setPositions] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    let active = true;
+  const { data: positions = [], isLoading } = useQuery({
+    queryKey: ["positions", { search }],
+    queryFn: async () => {
+      const res = await api.get(`/api/positions?search=${search}`);
+      return res.data.success ? res.data.data : [];
+    },
+  });
 
-    const fetchPositions = async () => {
-      setLoading(true);
-      try {
-        const res = await api.get(`/api/positions?search=${search}`);
-        if (active && res.data.success) {
-          setPositions(res.data.data);
-          setSelectedIds([]);
-        }
-      } catch (error) {
-        console.error("Fetch positions error:", error);
-        toast.error("Failed to load positions");
+  const deleteMutation = useMutation({
+    mutationFn: async (ids) => {
+      for (const id of ids) {
+        await api.delete(`/api/positions/${id}`);
       }
-      if (active) setLoading(false);
-    };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["positions"] });
+      toast.success("Selected position(s) deleted successfully!");
+      setSelectedIds([]);
+    },
+    onError: (err) => {
+      console.error(err);
+      toast.error("Some positions could not be deleted");
+    },
+  });
 
-    fetchPositions();
-
-    return () => {
-      active = false;
-    };
-  }, [search, refreshTrigger]);
+  const duplicateMutation = useMutation({
+    mutationFn: async (id) => {
+      const res = await api.post(`/api/positions/${id}/duplicate`);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["positions"] });
+      toast.success("Position duplicated successfully!");
+      setSelectedIds([]);
+    },
+    onError: (err) => {
+      console.error(err);
+      toast.error("Failed to duplicate position");
+    },
+  });
 
   const handleSelectRow = (id) => {
     if (selectedIds.includes(id)) {
@@ -68,34 +86,12 @@ const PositionsList = () => {
 
     if (!result.isConfirmed) return;
 
-    try {
-      for (const id of selectedIds) {
-        await api.delete(`/api/positions/${id}`);
-      }
-      toast.success("Selected position(s) deleted successfully!");
-      setSelectedIds([]);
-      setRefreshTrigger((prev) => prev + 1);
-    } catch (error) {
-      console.error("Delete position error:", error);
-      toast.error("Some positions could not be deleted");
-    }
+    deleteMutation.mutate(selectedIds);
   };
 
-  const handleDuplicateSelected = async () => {
+  const handleDuplicateSelected = () => {
     if (selectedIds.length !== 1) return;
-    const targetId = selectedIds[0];
-
-    try {
-      const res = await api.post(`/api/positions/${targetId}/duplicate`);
-      if (res.data.success) {
-        toast.success("Position duplicated successfully!");
-        setSelectedIds([]);
-        setRefreshTrigger((prev) => prev + 1);
-      }
-    } catch (error) {
-      console.error("Duplicate error:", error);
-      toast.error("Failed to duplicate position");
-    }
+    duplicateMutation.mutate(selectedIds[0]);
   };
 
   const handleAddNewClick = () => {
@@ -116,7 +112,10 @@ const PositionsList = () => {
           type="text"
           placeholder="Search positions..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setSelectedIds([]);
+          }}
           className="input input-bordered w-full md:w-64"
         />
       </div>
@@ -127,48 +126,59 @@ const PositionsList = () => {
         </div>
 
         <div className="flex gap-2">
-          <button
-            onClick={handleAddNewClick}
-            className="btn btn-sm btn-primary"
-          >
-            + Add New
-          </button>
+          {user && (
+            <button
+              onClick={handleAddNewClick}
+              className="btn btn-sm btn-primary"
+            >
+              + Add New
+            </button>
+          )}
 
-          <button
-            onClick={handleDuplicateSelected}
-            disabled={selectedIds.length !== 1}
-            className="btn btn-sm btn-neutral"
-          >
-            Duplicate
-          </button>
+          {user && (
+            <button
+              onClick={handleDuplicateSelected}
+              disabled={selectedIds.length !== 1 || duplicateMutation.isPending}
+              className="btn btn-sm btn-neutral"
+            >
+              Duplicate
+            </button>
+          )}
 
-          <button
-            onClick={handleEditClick}
-            disabled={selectedIds.length !== 1}
-            className="btn btn-sm btn-neutral"
-          >
-            Edit
-          </button>
+          {user && (
+            <button
+              onClick={handleEditClick}
+              disabled={selectedIds.length !== 1}
+              className="btn btn-sm btn-neutral"
+            >
+              Edit
+            </button>
+          )}
 
-          <button
-            onClick={handleDeleteSelected}
-            disabled={selectedIds.length === 0}
-            className="btn btn-sm btn-error"
-          >
-            Delete
-          </button>
+          {user && (
+            <button
+              onClick={handleDeleteSelected}
+              disabled={selectedIds.length === 0 || deleteMutation.isPending}
+              className="btn btn-sm btn-error"
+            >
+              Delete
+            </button>
+          )}
         </div>
       </div>
 
-      {loading ? (
-        <div className="text-center p-8">Loading Positions...</div>
+      {isLoading ? (
+        <div className="text-center p-8">
+          <Loading />
+          <span className="block mt-2">Loading Positions...</span>
+        </div>
       ) : positions.length === 0 ? (
         <div className="text-center p-8 text-gray-500">No positions found.</div>
       ) : (
         <div className="overflow-x-auto border border-base-300 rounded-md">
-          <table className="table w-full">
+          <table className="table w-full bg-base-100">
             <thead>
-              <tr className="bg-base-200">
+              <tr className="bg-base-200 text-sm">
                 <th className="w-12 text-center">
                   <input
                     type="checkbox"
@@ -185,13 +195,12 @@ const PositionsList = () => {
                 <th>Visibility</th>
                 <th>Attributes Included</th>
                 <th>Submitted CVs</th>
-                <th>Join Discussion</th>
               </tr>
             </thead>
 
             <tbody>
               {positions.map((pos) => (
-                <tr key={pos.id} className="hover:bg-base-200">
+                <tr key={pos.id} className="hover:bg-base-200 text-sm">
                   <td className="text-center">
                     <input
                       type="checkbox"
@@ -201,7 +210,18 @@ const PositionsList = () => {
                     />
                   </td>
 
-                  <td className="font-bold">{pos.title}</td>
+                  <td
+                    onClick={() =>
+                      navigate(
+                        user
+                          ? `/dashboard/positions/${pos.id}`
+                          : `/positions/${pos.id}`,
+                      )
+                    }
+                    className="font-bold text-primary hover:underline cursor-pointer"
+                  >
+                    {pos.title}
+                  </td>
                   <td className="max-w-xs truncate">{pos.description}</td>
                   <td>
                     <span
@@ -219,12 +239,6 @@ const PositionsList = () => {
                     <span className="font-semibold text-primary">
                       {pos._count?.cvs || 0}
                     </span>
-                  </td>
-                  <td
-                    onClick={() => navigate(`/dashboard/positions/${pos.id}`)}
-                    className="font-bold text-primary hover:underline cursor-pointer"
-                  >
-                    {pos.title}
                   </td>
                 </tr>
               ))}
