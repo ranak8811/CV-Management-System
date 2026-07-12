@@ -6,6 +6,8 @@ import ErrorPage from "../components/ErrorPage";
 import ProtectedRoute from "../routes/ProtectedRoute";
 import Home from "../pages/Home/Home";
 import Dashboard from "../pages/Dashboard/Dashboard";
+import Login from "../pages/Authentication/Login";
+import Register from "../pages/Authentication/Register";
 import GitHubCallback from "../components/GitHubCallback";
 import AttributesList from "../pages/Attributes/AttributesList";
 import PositionsList from "../pages/Positions/PositionsList";
@@ -13,7 +15,6 @@ import PositionForm from "../pages/Positions/PositionForm";
 import PositionDetail from "../pages/Positions/PositionDetail";
 import Profile from "../pages/Profile/Profile";
 import CVDetail from "../pages/CVs/CVDetail";
-import Login from "../pages/Authentication/Login";
 
 export const router = createBrowserRouter([
   {
@@ -34,6 +35,10 @@ export const router = createBrowserRouter([
       {
         path: "login",
         Component: Login,
+      },
+      {
+        path: "register",
+        Component: Register,
       },
       {
         path: "auth/github/callback",
