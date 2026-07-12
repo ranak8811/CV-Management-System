@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import { prisma } from "../config/db.js";
 
 const protect = async (req, res, next) => {
   let token;
@@ -12,7 +13,31 @@ const protect = async (req, res, next) => {
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      req.user = decoded;
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.id },
+      });
+
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: "Not authorized, user no longer exists",
+        });
+      }
+
+      if (user.isBlocked) {
+        return res.status(403).json({
+          success: false,
+          message: "Your account is blocked by the Administrator",
+        });
+      }
+
+      req.user = {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        isBlocked: user.isBlocked,
+      };
 
       return next();
     } catch (error) {
