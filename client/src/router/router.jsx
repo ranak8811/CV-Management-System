@@ -15,6 +15,7 @@ import PositionForm from "../pages/Positions/PositionForm";
 import PositionDetail from "../pages/Positions/PositionDetail";
 import Profile from "../pages/Profile/Profile";
 import CVDetail from "../pages/CVs/CVDetail";
+import UsersManagement from "../pages/Admin/UsersManagement";
 
 export const router = createBrowserRouter([
   {
@@ -111,6 +112,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <CVDetail />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "users",
+        element: (
+          <ProtectedRoute>
+            <UsersManagement />
           </ProtectedRoute>
         ),
       },

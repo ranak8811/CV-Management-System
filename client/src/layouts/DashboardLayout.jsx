@@ -60,6 +60,15 @@ const DashboardLayout = () => {
                   Attribute Library
                 </Link>
               )}
+
+              {user?.role === "ADMIN" && (
+                <Link
+                  to="/dashboard/users"
+                  className="p-2 hover:bg-base-300 rounded font-semibold block text-primary"
+                >
+                  Manage Users
+                </Link>
+              )}
             </nav>
           </div>
 
