@@ -61,10 +61,9 @@ const toggleBlockUser = async (req, res) => {
     });
   } catch (error) {
     console.error("Toggle block error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update user block state",
-    });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to update user block state" });
   }
 };
 
@@ -77,30 +76,33 @@ const updateUserRole = async (req, res) => {
       .status(400)
       .json({ success: false, message: "Invalid role value" });
   }
-  if (!user) {
-    return res.status(404).json({ success: false, message: "User not found" });
-  }
-
-  const updatedUser = await prisma.user.update({
-    where: { id },
-    data: {
-      role,
-      version: { increment: 1 },
-    },
-  });
-
-  res.json({
-    success: true,
-    message: "User role updated successfully",
-    data: {
-      id: updatedUser.id,
-      role: updatedUser.role,
-    },
-  });
 
   try {
     const user = await prisma.user.findUnique({
       where: { id },
+    });
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: {
+        role,
+        version: { increment: 1 },
+      },
+    });
+
+    res.json({
+      success: true,
+      message: "User role updated successfully",
+      data: {
+        id: updatedUser.id,
+        role: updatedUser.role,
+      },
     });
   } catch (error) {
     console.error("Update user role error:", error);
@@ -141,7 +143,6 @@ const deleteUser = async (req, res) => {
       where: { candidateId: id },
       select: { id: true },
     });
-
     const cvIds = userCVs.map((c) => c.id);
 
     if (cvIds.length > 0) {
@@ -164,3 +165,5 @@ const deleteUser = async (req, res) => {
       .json({ success: false, message: "Failed to delete user account" });
   }
 };
+
+export { getAllUsers, toggleBlockUser, updateUserRole, deleteUser };
