@@ -1,27 +1,68 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../../utils/api";
 import toast from "react-hot-toast";
 import Loading from "../../components/Loading";
 
 const PositionForm = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
   const isEditMode = !!id;
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [isPublic, setIsPublic] = useState(true);
-  const [maxProjects, setMaxProjects] = useState(3);
-  const [projectTags, setProjectTags] = useState([]);
+  const { data: position, isLoading: isLoadingPosition } = useQuery({
+    queryKey: ["position", id],
+    queryFn: async () => {
+      const res = await api.get(`/api/positions/${id}`);
+      return res.data.success ? res.data.data : null;
+    },
+    enabled: isEditMode,
+  });
+
+  if (isEditMode && isLoadingPosition) {
+    return (
+      <div className="text-center p-8">
+        <Loading />
+        <span className="block mt-2">Loading template details...</span>
+      </div>
+    );
+  }
+
+  return <PositionFormInner position={position} key={position?.id || "new"} />;
+};
+
+const PositionFormInner = ({ position }) => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const isEditMode = !!id;
+
+  const [title, setTitle] = useState(position?.title || "");
+  const [description, setDescription] = useState(position?.description || "");
+  const [isPublic, setIsPublic] = useState(position ? position.isPublic : true);
+  const [maxProjects, setMaxProjects] = useState(
+    position ? position.maxProjects : 3,
+  );
+  const [projectTags, setProjectTags] = useState(position?.projectTags || []);
   const [tagInput, setTagInput] = useState("");
-  const [version, setVersion] = useState(1);
-  const [submitting, setSubmitting] = useState(false);
+  const [version] = useState(position?.version || 1);
 
-  const [libraryAttributes, setLibraryAttributes] = useState([]);
-  const [selectedAttrs, setSelectedAttrs] = useState([]);
-
-  const [accessRules, setAccessRules] = useState([]);
+  const [selectedAttrs, setSelectedAttrs] = useState(
+    position
+      ? position.positionAttributes.map((pa) => ({
+          attributeId: pa.attributeId,
+          order: pa.order,
+        }))
+      : [],
+  );
+  const [accessRules, setAccessRules] = useState(
+    position
+      ? position.accessRules.map((ar) => ({
+          attributeId: ar.attributeId,
+          operator: ar.operator,
+          value: ar.value,
+        }))
+      : [],
+  );
   const [ruleAttributeId, setRuleAttributeId] = useState("");
   const [ruleOperator, setRuleOperator] = useState("EQUALS");
   const [ruleValue, setRuleValue] = useState("");
@@ -34,55 +75,45 @@ const PositionForm = () => {
     "IS_CHECKED",
   ];
 
-  useEffect(() => {
-    const loadLibrary = async () => {
-      try {
-        const res = await api.get("/api/attributes");
-        if (res.data.success) {
-          setLibraryAttributes(res.data.data);
-        }
-      } catch (err) {
-        console.error("Library attributes load failed:", err);
-        toast.error("Failed to load attributes library");
-      }
-    };
-    loadLibrary();
-  }, []);
+  const { data: libraryAttributes = [] } = useQuery({
+    queryKey: ["attributes"],
+    queryFn: async () => {
+      const res = await api.get("/api/attributes");
+      return res.data.success ? res.data.data : [];
+    },
+  });
 
-  useEffect(() => {
-    if (!isEditMode) return;
-    const loadPosition = async () => {
-      try {
-        const res = await api.get(`/api/positions/${id}`);
-        if (res.data.success) {
-          const pos = res.data.data;
-          setTitle(pos.title);
-          setDescription(pos.description);
-          setIsPublic(pos.isPublic);
-          setMaxProjects(pos.maxProjects);
-          setProjectTags(pos.projectTags || []);
-          setVersion(pos.version);
-          setSelectedAttrs(
-            pos.positionAttributes.map((pa) => ({
-              attributeId: pa.attributeId,
-              order: pa.order,
-            })),
-          );
-          setAccessRules(
-            pos.accessRules.map((ar) => ({
-              attributeId: ar.attributeId,
-              operator: ar.operator,
-              value: ar.value,
-            })),
-          );
-        }
-      } catch (err) {
-        console.error("Load position error:", err);
-        toast.error("Failed to load position data");
+  const saveMutation = useMutation({
+    mutationFn: async (payload) => {
+      if (isEditMode) {
+        return await api.put(`/api/positions/${id}`, payload);
+      } else {
+        return await api.post("/api/positions", payload);
       }
-    };
-    loadPosition();
-  }, [id, isEditMode]);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["positions"] });
+      if (isEditMode) {
+        queryClient.invalidateQueries({ queryKey: ["position", id] });
+      }
+      toast.success(
+        isEditMode
+          ? "Position updated successfully!"
+          : "Position created successfully!",
+      );
+      navigate("/dashboard/positions");
+    },
+    onError: (err) => {
+      console.error(err);
+      if (err.response?.status === 409) {
+        toast.error(
+          "Conflict: This position was modified by another recruiter. Please reload the page.",
+        );
+      } else {
+        toast.error(err.response?.data?.message || "Failed to save position");
+      }
+    },
+  });
 
   const handleAddTag = (e) => {
     e.preventDefault();
@@ -148,7 +179,7 @@ const PositionForm = () => {
     setAccessRules(accessRules.filter((rule) => rule.attributeId !== attrId));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
 
     if (selectedAttrs.length === 0) {
@@ -167,36 +198,10 @@ const PositionForm = () => {
       version,
     };
 
-    setSubmitting(true);
-    try {
-      if (isEditMode) {
-        const res = await api.put(`/api/positions/${id}`, payload);
-        if (res.data.success) {
-          toast.success("Position updated successfully!");
-          navigate("/dashboard/positions");
-        }
-      } else {
-        const res = await api.post("/api/positions", payload);
-        if (res.data.success) {
-          toast.success("Position created successfully!");
-          navigate("/dashboard/positions");
-        }
-      }
-    } catch (err) {
-      console.error("Save position error:", err);
-      if (err.response?.status === 409) {
-        toast.error(
-          "Conflict: This position was modified by another recruiter. Please reload the page.",
-        );
-      } else {
-        toast.error(err.response?.data?.message || "Failed to save position");
-      }
-    } finally {
-      setSubmitting(false);
-    }
+    saveMutation.mutate(payload);
   };
 
-  if (submitting) {
+  if (saveMutation.isPending) {
     return (
       <div className="fixed inset-0 bg-base-100/85 flex items-center justify-center z-50">
         <div className="text-center flex flex-col items-center gap-3">
