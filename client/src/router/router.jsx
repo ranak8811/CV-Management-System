@@ -27,6 +27,14 @@ export const router = createBrowserRouter([
         index: true,
         Component: Home,
       },
+      {
+        path: "positions",
+        Component: PositionsList,
+      },
+      {
+        path: "positions/:id",
+        Component: PositionDetail,
+      },
     ],
   },
   {
