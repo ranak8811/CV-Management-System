@@ -28,7 +28,7 @@ const App = () => {
           <LanguageProvider>
             <ThemeProvider>
               <RouterProvider router={router} />
-              <Toaster position="top-center" reverseOrder={false} />
+              <Toaster position="top-right" reverseOrder={false} />
             </ThemeProvider>
           </LanguageProvider>
         </AuthProvider>

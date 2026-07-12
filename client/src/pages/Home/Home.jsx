@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import api from "../../utils/api";
 import useAuth from "../../hooks/useAuth";
 import Loading from "../../components/Loading";
@@ -71,21 +71,6 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-base-100 text-base-content font-sans flex flex-col">
-      <header className="p-6 bg-base-200 border-b border-base-300 flex justify-between items-center max-w-5xl mx-auto w-full">
-        <h1 className="text-xl font-bold text-primary">CV Management System</h1>
-        <div>
-          {user ? (
-            <Link to="/dashboard" className="btn btn-sm btn-primary">
-              Go to Dashboard
-            </Link>
-          ) : (
-            <Link to="/login" className="btn btn-sm btn-neutral">
-              Get Started (Sign In)
-            </Link>
-          )}
-        </div>
-      </header>
-
       <main className="flex-1 max-w-5xl mx-auto w-full p-6 flex flex-col gap-10 my-4">
         <div className="text-center py-6 flex flex-col gap-3">
           <h2 className="text-3xl font-extrabold tracking-tight md:text-4xl">
