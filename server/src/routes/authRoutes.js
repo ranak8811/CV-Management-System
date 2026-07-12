@@ -1,10 +1,17 @@
 import express from "express";
-import { githubLogin, googleLogin } from "../controllers/authController.js";
+import {
+  githubLogin,
+  googleLogin,
+  registerUser,
+  loginUser,
+} from "../controllers/authController.js";
 import { protect } from "../middlewares/authMiddleware.js";
 import { prisma } from "../config/db.js";
 
 const router = express.Router();
 
+router.post("/register", registerUser);
+router.post("/login", loginUser);
 router.post("/google", googleLogin);
 router.post("/github", githubLogin);
 
@@ -15,7 +22,9 @@ router.get("/profile", protect, async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     res.json({
