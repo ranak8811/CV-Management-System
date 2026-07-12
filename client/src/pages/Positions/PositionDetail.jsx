@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../../utils/api";
 import toast from "react-hot-toast";
 import Swal from "sweetalert2";
@@ -12,55 +13,49 @@ const PositionDetail = () => {
   const { id } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  const [position, setPosition] = useState(null);
   const [activeTab, setActiveTab] = useState("details");
-  const [loading, setLoading] = useState(true);
-
-  const [posts, setPosts] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
-
-  const [cvs, setCvs] = useState([]);
-  const [loadingCVs, setLoadingCVs] = useState(false);
   const [selectedCVIds, setSelectedCVIds] = useState([]);
 
   const isRecruiterOrAdmin =
     user && (user.role === "RECRUITER" || user.role === "ADMIN");
   const scrollRef = useRef(null);
 
-  useEffect(() => {
-    const loadPositionData = async () => {
-      try {
-        const res = await api.get(`/api/positions/${id}`);
-        if (res.data.success) {
-          setPosition(res.data.data);
-        }
-      } catch (err) {
-        console.error("Load position error:", err);
-        toast.error("Failed to load position details");
-        navigate("/dashboard/positions");
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadPositionData();
-  }, [id, navigate]);
+  const { data: position, isLoading } = useQuery({
+    queryKey: ["position", id],
+    queryFn: async () => {
+      const res = await api.get(`/api/positions/${id}`);
+      return res.data.success ? res.data.data : null;
+    },
+    onError: () => {
+      toast.error("Failed to load position details");
+      navigate(user ? "/dashboard/positions" : "/positions");
+    },
+  });
+
+  const { data: posts = [] } = useQuery({
+    queryKey: ["discussions", id],
+    queryFn: async () => {
+      const res = await api.get(`/api/discussions/${id}`);
+      return res.data.success ? res.data.data : [];
+    },
+    enabled: !!user && !!position,
+  });
+
+  const { data: cvs = [], isLoading: loadingCVs } = useQuery({
+    queryKey: ["position-cvs", id],
+    queryFn: async () => {
+      const res = await api.get(`/api/cvs/position/${id}`);
+      return res.data.success ? res.data.data : [];
+    },
+    enabled: !!user && activeTab === "cvs" && isRecruiterOrAdmin && !!position,
+  });
 
   useEffect(() => {
-    if (!position) return;
-
-    const fetchPosts = async () => {
-      try {
-        const res = await api.get(`/api/discussions/${id}`);
-        if (res.data.success) {
-          setPosts(res.data.data);
-        }
-      } catch (err) {
-        console.error("Fetch posts error:", err);
-      }
-    };
-    fetchPosts();
+    if (!position || !user) return;
 
     const socketUrl = import.meta.env.VITE_API_URL
       ? import.meta.env.VITE_API_URL.replace("/api", "")
@@ -71,36 +66,17 @@ const PositionDetail = () => {
     socket.emit("joinPosition", id);
 
     socket.on("newPost", (newPost) => {
-      setPosts((prev) => {
-        if (prev.some((p) => p.id === newPost.id)) return prev;
-        return [...prev, newPost];
+      queryClient.setQueryData(["discussions", id], (oldPosts) => {
+        if (!oldPosts) return [newPost];
+        if (oldPosts.some((p) => p.id === newPost.id)) return oldPosts;
+        return [...oldPosts, newPost];
       });
     });
 
     return () => {
       socket.disconnect();
     };
-  }, [id, position]);
-
-  useEffect(() => {
-    if (activeTab === "cvs" && isRecruiterOrAdmin && position) {
-      const loadCVs = async () => {
-        setLoadingCVs(true);
-        try {
-          const res = await api.get(`/api/cvs/position/${id}`);
-          if (res.data.success) {
-            setCvs(res.data.data);
-          }
-        } catch (err) {
-          console.error(err);
-          toast.error("Failed to load submitted CVs");
-        } finally {
-          setLoadingCVs(false);
-        }
-      };
-      loadCVs();
-    }
-  }, [activeTab, id, position, isRecruiterOrAdmin]);
+  }, [id, position, user, queryClient]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -125,6 +101,24 @@ const PositionDetail = () => {
       setSubmittingComment(false);
     }
   };
+
+  const deleteCVMutation = useMutation({
+    mutationFn: async (cvId) => {
+      const targetCV = cvs.find((c) => c.id === cvId);
+      await api.delete(`/api/cvs/${cvId}`, {
+        data: { version: targetCV.version || 1 },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["position-cvs", id] });
+      toast.success("CV deleted successfully!");
+      setSelectedCVIds([]);
+    },
+    onError: (err) => {
+      console.error(err);
+      toast.error("Failed to delete selected CV(s)");
+    },
+  });
 
   const handleSelectCV = (cvId) => {
     if (selectedCVIds.includes(cvId)) {
@@ -162,19 +156,8 @@ const PositionDetail = () => {
 
     if (!result.isConfirmed) return;
 
-    try {
-      for (const cvId of selectedCVIds) {
-        const targetCV = cvs.find((c) => c.id === cvId);
-        await api.delete(`/api/cvs/${cvId}`, {
-          data: { version: targetCV.version || 1 },
-        });
-      }
-      toast.success("CV(s) deleted successfully!");
-      setCvs((prev) => prev.filter((c) => !selectedCVIds.includes(c.id)));
-      setSelectedCVIds([]);
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to delete selected CVs");
+    for (const cvId of selectedCVIds) {
+      deleteCVMutation.mutate(cvId);
     }
   };
 
@@ -200,12 +183,9 @@ const PositionDetail = () => {
         "Published Status",
         "Likes Count",
       ];
-      const attrNames = [];
-
-      position.positionAttributes.forEach((pa) => {
-        attrNames.push(pa.attribute.name);
-      });
-
+      const attrNames = position.positionAttributes.map(
+        (pa) => pa.attribute.name,
+      );
       const fullHeaders = [...headers, ...attrNames];
 
       const csvRows = [fullHeaders.join(",")];
@@ -249,12 +229,18 @@ const PositionDetail = () => {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="text-center p-8">
         <Loading />
         <span className="block mt-2">Loading position details...</span>
       </div>
+    );
+  }
+
+  if (!position) {
+    return (
+      <div className="text-center p-8 text-error">Position not found.</div>
     );
   }
 
@@ -294,13 +280,15 @@ const PositionDetail = () => {
         >
           Position Details
         </button>
-        <button
-          onClick={() => setActiveTab("discussion")}
-          className={`tab flex-1 ${activeTab === "discussion" ? "tab-active bg-primary text-primary-content" : ""}`}
-        >
-          Discussions ({posts.length})
-        </button>
-        {isRecruiterOrAdmin && (
+        {user && (
+          <button
+            onClick={() => setActiveTab("discussion")}
+            className={`tab flex-1 ${activeTab === "discussion" ? "tab-active bg-primary text-primary-content" : ""}`}
+          >
+            Discussions ({posts.length})
+          </button>
+        )}
+        {user && isRecruiterOrAdmin && (
           <button
             onClick={() => setActiveTab("cvs")}
             className={`tab flex-1 ${activeTab === "cvs" ? "tab-active bg-primary text-primary-content" : ""}`}
@@ -373,7 +361,7 @@ const PositionDetail = () => {
         </div>
       )}
 
-      {activeTab === "discussion" && (
+      {activeTab === "discussion" && user && (
         <div className="border border-base-300 p-6 rounded-lg bg-base-200 flex flex-col gap-4 h-[600px]">
           <h3 className="text-lg font-bold border-b border-base-300 pb-2 text-primary">
             Discussion Feed
@@ -432,7 +420,7 @@ const PositionDetail = () => {
         </div>
       )}
 
-      {activeTab === "cvs" && isRecruiterOrAdmin && (
+      {activeTab === "cvs" && user && isRecruiterOrAdmin && (
         <div className="border border-base-300 p-6 rounded-lg bg-base-200 flex flex-col gap-4">
           <div className="flex items-center gap-3 p-3 bg-base-100 border border-base-300 rounded-md mb-2 justify-between">
             <div className="text-sm font-semibold">
