@@ -1,10 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import useAuth from "../../hooks/useAuth";
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../../utils/api";
 import toast from "react-hot-toast";
 import Swal from "sweetalert2";
 import Loading from "../../components/Loading";
+import useAuth from "../../hooks/useAuth";
 
 const UsersManagement = () => {
   const queryClient = useQueryClient();
@@ -30,7 +30,7 @@ const UsersManagement = () => {
       setSelectedIds([]);
     },
     onError: (err) => {
-      console.log(err);
+      console.error(err);
       toast.error(
         err.response?.data?.message || "Failed to update block state",
       );
@@ -87,21 +87,17 @@ const UsersManagement = () => {
 
   const handleBlockToggle = () => {
     if (selectedIds.length !== 1) return;
-
     const targetId = selectedIds[0];
-
     if (targetId === currentUser.id) {
       toast.error("You cannot block yourself!");
       return;
     }
-
     blockMutation.mutate(targetId);
   };
 
   const handleChangeRole = async () => {
     if (selectedIds.length !== 1) return;
     const targetId = selectedIds[0];
-
     const targetUser = users.find((u) => u.id === targetId);
 
     const { value: role } = await Swal.fire({
@@ -128,7 +124,6 @@ const UsersManagement = () => {
     if (selectedIds.length === 0) return;
 
     const hasSelf = selectedIds.includes(currentUser.id);
-
     if (hasSelf) {
       toast.error("You cannot delete your own admin account!");
       return;
@@ -160,7 +155,101 @@ const UsersManagement = () => {
     );
   }
 
-  return <div></div>;
+  return (
+    <div className="p-4 font-sans bg-base-100 text-base-content min-h-screen">
+      <h2 className="text-2xl font-bold mb-6">User Accounts Registry</h2>
+
+      <div className="flex items-center gap-3 p-3 bg-base-200 border border-base-300 rounded-md mb-4 justify-between">
+        <div className="text-sm font-semibold">
+          Selected: <span className="text-primary">{selectedIds.length}</span>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={handleBlockToggle}
+            disabled={selectedIds.length !== 1 || blockMutation.isPending}
+            className="btn btn-sm btn-neutral"
+          >
+            Block / Unblock
+          </button>
+
+          <button
+            onClick={handleChangeRole}
+            disabled={selectedIds.length !== 1 || roleMutation.isPending}
+            className="btn btn-sm btn-primary"
+          >
+            Change Role
+          </button>
+
+          <button
+            onClick={handleDeleteUsers}
+            disabled={selectedIds.length === 0}
+            className="btn btn-sm btn-error"
+          >
+            Delete User
+          </button>
+        </div>
+      </div>
+
+      {users.length === 0 ? (
+        <div className="text-center p-8 text-gray-500">
+          No users registered in the system.
+        </div>
+      ) : (
+        <div className="overflow-x-auto border border-base-300 rounded-md">
+          <table className="table w-full bg-base-100 text-sm">
+            <thead>
+              <tr className="bg-base-300">
+                <th className="w-12 text-center">
+                  <input
+                    type="checkbox"
+                    checked={
+                      selectedIds.length === users.length && users.length > 0
+                    }
+                    onChange={handleSelectAll}
+                    className="checkbox checkbox-sm"
+                  />
+                </th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Created At</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr key={u.id} className="hover:bg-base-200">
+                  <td className="text-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(u.id)}
+                      onChange={() => handleSelectRow(u.id)}
+                      className="checkbox checkbox-sm"
+                    />
+                  </td>
+                  <td className="font-bold">{u.name}</td>
+                  <td>{u.email}</td>
+                  <td>
+                    <span className="badge badge-neutral badge-md">
+                      {u.role}
+                    </span>
+                  </td>
+                  <td>
+                    <span
+                      className={`badge ${u.isBlocked ? "badge-error" : "badge-success"} text-white badge-md`}
+                    >
+                      {u.isBlocked ? "Blocked" : "Active"}
+                    </span>
+                  </td>
+                  <td>{new Date(u.createdAt).toLocaleDateString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default UsersManagement;
