@@ -1,10 +1,10 @@
-import { GoogleLogin } from "@react-oauth/google";
-import useAuth from "../hooks/useAuth";
-import useTheme from "../hooks/useTheme";
-import useLanguage from "../hooks/useLanguage";
+import useAuth from "../../hooks/useAuth";
+import useLanguage from "../../hooks/useLanguage";
+import useTheme from "../../hooks/useTheme";
 import { useNavigate, Navigate } from "react-router-dom";
-import api from "../utils/api";
+import api from "../../utils/api";
 import toast from "react-hot-toast";
+import { GoogleLogin } from "@react-oauth/google";
 
 const Login = () => {
   const { user, handleLoginSuccess } = useAuth();
