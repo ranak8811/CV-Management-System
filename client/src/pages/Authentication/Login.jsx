@@ -17,6 +17,7 @@ const Login = () => {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm();
 
@@ -71,6 +72,11 @@ const Login = () => {
     const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID;
     const redirectUri = `${window.location.origin}/auth/github/callback`;
     window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=user:email`;
+  };
+
+  const handleQuickLogin = (email, password) => {
+    setValue("email", email);
+    setValue("password", password);
   };
 
   const onSubmit = (data) => {
@@ -137,7 +143,38 @@ const Login = () => {
           </button>
         </form>
 
-        <p className="text-xs text-center">
+        <div className="border-t border-base-300 pt-4 flex flex-col gap-2">
+          <p className="text-[11px] text-gray-500 font-bold text-center mb-0.5">
+            Quick Demo Login
+          </p>
+          <div className="grid grid-cols-3 gap-1">
+            <button
+              type="button"
+              onClick={() => handleQuickLogin("alex@gmail.com", "alex#123")}
+              className="btn btn-xs btn-outline btn-neutral text-[9px] uppercase"
+            >
+              Candidate
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                handleQuickLogin("recruiter@gmail.com", "recruiter#123")
+              }
+              className="btn btn-xs btn-outline btn-neutral text-[9px] uppercase"
+            >
+              Recruiter
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickLogin("admin@gmail.com", "admin#123")}
+              className="btn btn-xs btn-outline btn-neutral text-[9px] uppercase"
+            >
+              Admin
+            </button>
+          </div>
+        </div>
+
+        <p className="text-xs text-center border-t border-base-300 pt-4">
           Don&apos;t have an account?{" "}
           <Link
             to="/register"
