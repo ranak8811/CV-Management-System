@@ -12,11 +12,9 @@ import { protect, authorize } from "../middlewares/authMiddleware.js";
 const router = express.Router();
 
 router.get("/", getPositions);
-
-router.get("/:id", protect, getPositionById);
+router.get("/:id", getPositionById);
 
 router.post("/", protect, authorize("RECRUITER", "ADMIN"), createPosition);
-
 router.post(
   "/:id/duplicate",
   protect,

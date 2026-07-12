@@ -27,6 +27,14 @@ router.get("/profile", protect, async (req, res) => {
         .json({ success: false, message: "User not found" });
     }
 
+    const photo = await prisma.userAttributeValue.findFirst({
+      where: {
+        userId: user.id,
+        attribute: { name: "Personal Photo" },
+      },
+      select: { value: true },
+    });
+
     res.json({
       success: true,
       message: "Profile data retrieved successfully",
@@ -35,6 +43,7 @@ router.get("/profile", protect, async (req, res) => {
         email: user.email,
         name: user.name,
         role: user.role,
+        image: photo ? photo.value : "",
       },
     });
   } catch (error) {

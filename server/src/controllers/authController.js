@@ -17,6 +17,17 @@ const generateToken = (user) => {
   );
 };
 
+const getPersonalPhoto = async (userId) => {
+  const photo = await prisma.userAttributeValue.findFirst({
+    where: {
+      userId,
+      attribute: { name: "Personal Photo" },
+    },
+    select: { value: true },
+  });
+  return photo ? photo.value : "";
+};
+
 const ensureAndSeedValue = async (userId, attrName, value) => {
   let attr = await prisma.attribute.findUnique({
     where: { name: attrName },
@@ -97,6 +108,7 @@ const registerUser = async (req, res) => {
         email: user.email,
         name: user.name,
         role: user.role,
+        image: await getPersonalPhoto(user.id),
       },
     });
   } catch (error) {
@@ -152,6 +164,7 @@ const loginUser = async (req, res) => {
         email: user.email,
         name: user.name,
         role: user.role,
+        image: await getPersonalPhoto(user.id),
       },
     });
   } catch (error) {
@@ -196,6 +209,7 @@ const googleLogin = async (req, res) => {
           email: normalizedEmail,
           name,
           role: "CANDIDATE",
+          image: await getPersonalPhoto(user.id),
         },
       });
     }
@@ -355,6 +369,7 @@ const githubLogin = async (req, res) => {
         email: user.email,
         name: user.name,
         role: user.role,
+        image: await getPersonalPhoto(user.id),
       },
     });
   } catch (error) {
