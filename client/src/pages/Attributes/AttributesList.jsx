@@ -1,16 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import api from "../../utils/api";
 import toast from "react-hot-toast";
 import Swal from "sweetalert2";
 import AttributeModal from "../../components/AttributeModal";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const AttributesList = () => {
-  const [attributes, setAttributes] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [attributeToEdit, setAttributeToEdit] = useState(null);
@@ -23,31 +22,32 @@ const AttributesList = () => {
     "Technical Skills",
   ];
 
-  useEffect(() => {
-    let active = true;
-    const fetchAttributes = async () => {
-      setLoading(true);
-      try {
-        const res = await api.get(
-          `/api/attributes?search=${search}&category=${category}`,
-        );
-        if (active && res.data.success) {
-          setAttributes(res.data.data);
-          setSelectedIds([]);
-        }
-      } catch (error) {
-        console.error("Fetch attributes error:", error);
-        toast.error("Failed to load attributes");
+  const { data: attributes = [], isLoading } = useQuery({
+    queryKey: ["attributes", { search, category }],
+    queryFn: async () => {
+      const res = await api.get(
+        `/api/attributes?search=${search}&category=${category}`,
+      );
+      return res.data.success ? res.data.data : [];
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (ids) => {
+      for (const id of ids) {
+        await api.delete(`/api/attributes/${id}`);
       }
-      if (active) setLoading(false);
-    };
-
-    fetchAttributes();
-
-    return () => {
-      active = false;
-    };
-  }, [search, category, refreshTrigger]);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["attributes"] });
+      toast.success("Selected attribute(s) deleted successfully!");
+      setSelectedIds([]);
+    },
+    onError: (err) => {
+      console.error("Delete error:", err);
+      toast.error("Some attributes could not be deleted");
+    },
+  });
 
   const handleSelectRow = (id) => {
     if (selectedIds.includes(id)) {
@@ -80,17 +80,7 @@ const AttributesList = () => {
 
     if (!result.isConfirmed) return;
 
-    try {
-      for (const id of selectedIds) {
-        await api.delete(`/api/attributes/${id}`);
-      }
-      toast.success("Selected attribute(s) deleted successfully!");
-      setSelectedIds([]);
-      setRefreshTrigger((prev) => prev + 1);
-    } catch (error) {
-      console.error("Delete error:", error);
-      toast.error("Some attributes could not be deleted");
-    }
+    deleteMutation.mutate(selectedIds);
   };
 
   const handleAddNewClick = () => {
@@ -107,7 +97,7 @@ const AttributesList = () => {
 
   const handleModalSave = () => {
     setIsModalOpen(false);
-    setRefreshTrigger((prev) => prev + 1);
+    queryClient.invalidateQueries({ queryKey: ["attributes"] });
     setSelectedIds([]);
   };
 
@@ -120,12 +110,18 @@ const AttributesList = () => {
           type="text"
           placeholder="Search by prefix..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setSelectedIds([]);
+          }}
           className="input input-bordered w-full md:w-64"
         />
         <select
           value={category}
-          onChange={(e) => setCategory(e.target.value)}
+          onChange={(e) => {
+            setCategory(e.target.value);
+            setSelectedIds([]);
+          }}
           className="select select-bordered w-full md:w-64"
         >
           <option value="">All Categories</option>
@@ -142,7 +138,10 @@ const AttributesList = () => {
           Selected: <span className="text-primary">{selectedIds.length}</span>
         </div>
         <div className="flex gap-2">
-          <button onClick={handleAddNewClick} className="btn btn-sm btn-primary">
+          <button
+            onClick={handleAddNewClick}
+            className="btn btn-sm btn-primary"
+          >
             + Add New
           </button>
 
@@ -156,15 +155,15 @@ const AttributesList = () => {
 
           <button
             onClick={handleDeleteSelected}
-            disabled={selectedIds.length === 0}
+            disabled={selectedIds.length === 0 || deleteMutation.isPending}
             className="btn btn-sm btn-error"
           >
-            Delete
+            {deleteMutation.isPending ? "Deleting..." : "Delete"}
           </button>
         </div>
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <div className="text-center p-8">Loading Attributes...</div>
       ) : attributes.length === 0 ? (
         <div className="text-center p-8 text-gray-500">
