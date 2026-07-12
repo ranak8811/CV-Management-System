@@ -109,3 +109,58 @@ const updateUserRole = async (req, res) => {
       .json({ success: false, message: "Failed to update user role" });
   }
 };
+
+const deleteUser = async (req, res) => {
+  const { id } = req.params;
+  const adminId = req.user.id;
+
+  if (id === adminId) {
+    return res.status(400).json({
+      success: false,
+      message: "You cannot delete your own admin account",
+    });
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    await prisma.userAttributeValue.deleteMany({ where: { userId: id } });
+    await prisma.project.deleteMany({ where: { userId: id } });
+    await prisma.discussionPost.deleteMany({ where: { userId: id } });
+    await prisma.cVLike.deleteMany({ where: { userId: id } });
+
+    const userCVs = await prisma.cV.findMany({
+      where: { candidateId: id },
+      select: { id: true },
+    });
+
+    const cvIds = userCVs.map((c) => c.id);
+
+    if (cvIds.length > 0) {
+      await prisma.cVLike.deleteMany({ where: { cvId: { in: cvIds } } });
+      await prisma.cV.deleteMany({ where: { candidateId: id } });
+    }
+
+    await prisma.user.delete({
+      where: { id },
+    });
+
+    res.json({
+      success: true,
+      message: "User account and all related data deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete user error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to delete user account" });
+  }
+};
