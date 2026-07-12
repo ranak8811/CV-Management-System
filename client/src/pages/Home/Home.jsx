@@ -1,56 +1,32 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import api from "../../utils/api";
 import useAuth from "../../hooks/useAuth";
 import Loading from "../../components/Loading";
 
 const Home = () => {
   const { user } = useAuth();
-
   const navigate = useNavigate();
 
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchLandingData = async () => {
-      try {
-        const res = await api.get("/api/public/landing");
-        if (res.data.success) {
-          setData(res.data.data);
-        }
-      } catch (error) {
-        console.error("Fetch landing page data failed:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchLandingData();
-  }, []);
+  const { data: landingData, isLoading } = useQuery({
+    queryKey: ["landing-stats"],
+    queryFn: async () => {
+      const res = await api.get("/api/public/landing");
+      return res.data.success ? res.data.data : null;
+    },
+  });
 
   const handleTagClick = (tag) => {
-    if (!user) {
-      navigate("/login");
-      return;
-    }
-
-    if (user.role === "RECRUITER" || user.role === "ADMIN") {
-      navigate(`/dashboard/positions?search=${tag}`);
-    } else {
-      navigate(`/dashboard/positions?search=${tag}`);
-    }
+    navigate(
+      user ? `/dashboard/positions?search=${tag}` : `/positions?search=${tag}`,
+    );
   };
 
   const handlePositionClick = (posId) => {
-    if (!user) {
-      navigate("/login");
-    } else {
-      navigate(`/dashboard/positions/${posId}`);
-    }
+    navigate(user ? `/dashboard/positions/${posId}` : `/positions/${posId}`);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-base-100 text-base-content p-6">
         <Loading />
@@ -61,7 +37,7 @@ const Home = () => {
     );
   }
 
-  const stats = data?.statistics || {
+  const stats = landingData?.statistics || {
     totalPositions: 0,
     totalCandidates: 0,
     totalRecruiters: 0,
@@ -130,7 +106,7 @@ const Home = () => {
             <h3 className="text-lg font-bold border-b border-base-300 pb-2 text-primary">
               Latest Positions
             </h3>
-            {data?.latestPositions?.length === 0 ? (
+            {landingData?.latestPositions?.length === 0 ? (
               <p className="text-sm text-gray-500">No positions listed.</p>
             ) : (
               <div className="overflow-x-auto">
@@ -142,7 +118,7 @@ const Home = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.latestPositions.map((pos) => (
+                    {landingData.latestPositions.map((pos) => (
                       <tr key={pos.id} className="hover:bg-base-200">
                         <td
                           onClick={() => handlePositionClick(pos.id)}
@@ -163,7 +139,7 @@ const Home = () => {
             <h3 className="text-lg font-bold border-b border-base-300 pb-2 text-primary">
               Most Popular Positions
             </h3>
-            {data?.popularPositions?.length === 0 ? (
+            {landingData?.popularPositions?.length === 0 ? (
               <p className="text-sm text-gray-500">
                 No popular positions found.
               </p>
@@ -177,7 +153,7 @@ const Home = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.popularPositions.map((pos) => (
+                    {landingData.popularPositions.map((pos) => (
                       <tr key={pos.id} className="hover:bg-base-200">
                         <td
                           onClick={() => handlePositionClick(pos.id)}
@@ -199,11 +175,11 @@ const Home = () => {
           <h3 className="text-lg font-bold border-b border-base-300 pb-2 text-primary">
             Technology Tag Cloud
           </h3>
-          {data?.tags?.length === 0 ? (
+          {landingData?.tags?.length === 0 ? (
             <p className="text-sm text-gray-500">No tags aggregated yet.</p>
           ) : (
             <div className="flex flex-wrap gap-2 pt-2">
-              {data.tags.map((tag) => (
+              {landingData.tags.map((tag) => (
                 <button
                   key={tag}
                   onClick={() => handleTagClick(tag)}
