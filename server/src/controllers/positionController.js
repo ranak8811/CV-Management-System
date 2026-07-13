@@ -141,6 +141,9 @@ const duplicatePosition = async (req, res) => {
 
 const getPositions = async (req, res) => {
   const { search } = req.query;
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
 
   try {
     const whereClause = {};
@@ -152,8 +155,13 @@ const getPositions = async (req, res) => {
       ];
     }
 
+    const totalItems = await prisma.position.count({ where: whereClause });
+    const totalPages = Math.ceil(totalItems / limit);
+
     const positions = await prisma.position.findMany({
       where: whereClause,
+      skip,
+      take: limit,
       include: {
         positionAttributes: { include: { attribute: true } },
         accessRules: { include: { attribute: true } },
@@ -162,7 +170,16 @@ const getPositions = async (req, res) => {
       orderBy: { updatedAt: "desc" },
     });
 
-    res.json({ success: true, data: positions });
+    res.json({
+      success: true,
+      data: positions,
+      pagination: {
+        totalItems,
+        totalPages,
+        currentPage: page,
+        limit,
+      },
+    });
   } catch (error) {
     console.error("Fetch positions error:", error);
     res
