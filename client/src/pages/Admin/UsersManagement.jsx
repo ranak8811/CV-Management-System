@@ -5,19 +5,24 @@ import toast from "react-hot-toast";
 import Swal from "sweetalert2";
 import Loading from "../../components/Loading";
 import useAuth from "../../hooks/useAuth";
+import Table from "../../components/Table";
 
 const UsersManagement = () => {
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
+  const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState([]);
 
-  const { data: users = [], isLoading } = useQuery({
-    queryKey: ["admin", "users"],
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin", "users", { page }],
     queryFn: async () => {
-      const res = await api.get("/api/admin/users");
-      return res.data.success ? res.data.data : [];
+      const res = await api.get(`/api/admin/users?page=${page}&limit=10`);
+      return res.data.success ? res.data : { data: [], pagination: null };
     },
   });
+
+  const users = data?.data || [];
+  const pagination = data?.pagination || null;
 
   const blockMutation = useMutation({
     mutationFn: async (id) => {
@@ -77,11 +82,12 @@ const UsersManagement = () => {
     }
   };
 
-  const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      setSelectedIds(users.map((u) => u.id));
+  const handleSelectAll = (checked, visibleRows) => {
+    const visibleIds = visibleRows.map((r) => r.id);
+    if (checked) {
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...visibleIds])));
     } else {
-      setSelectedIds([]);
+      setSelectedIds((prev) => prev.filter((id) => !visibleIds.includes(id)));
     }
   };
 
@@ -146,14 +152,38 @@ const UsersManagement = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="text-center p-8">
-        <Loading />
-        <span className="block mt-2">Loading users registry...</span>
-      </div>
-    );
-  }
+  const columns = [
+    {
+      header: "Name",
+      accessor: "name",
+      render: (row) => <span className="font-bold">{row.name}</span>,
+    },
+    { header: "Email", accessor: "email" },
+    {
+      header: "Role",
+      accessor: "role",
+      render: (row) => (
+        <span className="badge badge-neutral badge-md">{row.role}</span>
+      ),
+    },
+    {
+      header: "Status",
+      accessor: "isBlocked",
+      render: (row) => (
+        <span
+          className={`badge ${row.isBlocked ? "badge-error" : "badge-success"} text-white badge-md`}
+        >
+          {row.isBlocked ? "Blocked" : "Active"}
+        </span>
+      ),
+    },
+    {
+      header: "Created At",
+      render: (row) => (
+        <span>{new Date(row.createdAt).toLocaleDateString()}</span>
+      ),
+    },
+  ];
 
   return (
     <div className="p-4 font-sans bg-base-100 text-base-content min-h-screen">
@@ -171,7 +201,6 @@ const UsersManagement = () => {
           >
             Block / Unblock
           </button>
-
           <button
             onClick={handleChangeRole}
             disabled={selectedIds.length !== 1 || roleMutation.isPending}
@@ -179,7 +208,6 @@ const UsersManagement = () => {
           >
             Change Role
           </button>
-
           <button
             onClick={handleDeleteUsers}
             disabled={selectedIds.length === 0}
@@ -190,63 +218,21 @@ const UsersManagement = () => {
         </div>
       </div>
 
-      {users.length === 0 ? (
-        <div className="text-center p-8 text-gray-500">
-          No users registered in the system.
+      {isLoading ? (
+        <div className="text-center p-8">
+          <Loading />
+          <span className="block mt-2">Loading users registry...</span>
         </div>
       ) : (
-        <div className="overflow-x-auto border border-base-300 rounded-md">
-          <table className="table w-full bg-base-100 text-sm">
-            <thead>
-              <tr className="bg-base-300">
-                <th className="w-12 text-center">
-                  <input
-                    type="checkbox"
-                    checked={
-                      selectedIds.length === users.length && users.length > 0
-                    }
-                    onChange={handleSelectAll}
-                    className="checkbox checkbox-sm"
-                  />
-                </th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>Created At</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u.id} className="hover:bg-base-200">
-                  <td className="text-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.includes(u.id)}
-                      onChange={() => handleSelectRow(u.id)}
-                      className="checkbox checkbox-sm"
-                    />
-                  </td>
-                  <td className="font-bold">{u.name}</td>
-                  <td>{u.email}</td>
-                  <td>
-                    <span className="badge badge-neutral badge-md">
-                      {u.role}
-                    </span>
-                  </td>
-                  <td>
-                    <span
-                      className={`badge ${u.isBlocked ? "badge-error" : "badge-success"} text-white badge-md`}
-                    >
-                      {u.isBlocked ? "Blocked" : "Active"}
-                    </span>
-                  </td>
-                  <td>{new Date(u.createdAt).toLocaleDateString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table
+          columns={columns}
+          data={users}
+          selectedIds={selectedIds}
+          onSelectRow={handleSelectRow}
+          onSelectAll={handleSelectAll}
+          pagination={pagination}
+          onPageChange={(newPage) => setPage(newPage)}
+        />
       )}
     </div>
   );
