@@ -16,6 +16,7 @@ const PositionsList = () => {
 const PositionsListInner = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const isRecruiterOrAdmin = user && (user.role === "RECRUITER" || user.role === "ADMIN");
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -170,7 +171,7 @@ const PositionsListInner = () => {
             {row.accessRules.map((rule) => (
               <span
                 key={rule.id}
-                className="badge badge-accent badge-outline text-[10px] px-1.5 py-0.5"
+                className="bg-base-300 text-base-content text-[10px] px-2 py-0.5 rounded font-medium border-none"
               >
                 {rule.attribute?.name} {rule.operator.replace("_", " ")} {rule.value}
               </span>
@@ -205,19 +206,17 @@ const PositionsListInner = () => {
         />
       </div>
 
-      <div className="flex items-center gap-3 p-3 bg-base-200 border border-base-300 rounded-md mb-4 justify-between">
-        <div className="text-sm font-semibold">
-          Selected: <span className="text-primary">{selectedIds.length}</span>
-        </div>
+      {isRecruiterOrAdmin && (
+        <div className="flex items-center gap-3 p-3 bg-base-200 border border-base-300 rounded-md mb-4 justify-between">
+          <div className="text-sm font-semibold">
+            Selected: <span className="text-primary">{selectedIds.length}</span>
+          </div>
 
-        <div className="flex gap-2">
-          {user && (
+          <div className="flex gap-2">
             <button onClick={handleAddNewClick} className="btn btn-sm btn-primary">
               + Add New
             </button>
-          )}
 
-          {user && (
             <button
               onClick={handleDuplicateSelected}
               disabled={selectedIds.length !== 1 || duplicateMutation.isPending}
@@ -225,9 +224,7 @@ const PositionsListInner = () => {
             >
               Duplicate
             </button>
-          )}
 
-          {user && (
             <button
               onClick={handleEditClick}
               disabled={selectedIds.length !== 1}
@@ -235,9 +232,7 @@ const PositionsListInner = () => {
             >
               Edit
             </button>
-          )}
 
-          {user && (
             <button
               onClick={handleDeleteSelected}
               disabled={selectedIds.length === 0 || deleteMutation.isPending}
@@ -245,9 +240,9 @@ const PositionsListInner = () => {
             >
               Delete
             </button>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {isLoading ? (
         <div className="text-center p-8">
@@ -259,8 +254,8 @@ const PositionsListInner = () => {
           columns={columns}
           data={positions}
           selectedIds={selectedIds}
-          onSelectRow={handleSelectRow}
-          onSelectAll={handleSelectAll}
+          onSelectRow={isRecruiterOrAdmin ? handleSelectRow : null}
+          onSelectAll={isRecruiterOrAdmin ? handleSelectAll : null}
           pagination={pagination}
           onPageChange={(newPage) => setPage(newPage)}
         />

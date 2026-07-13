@@ -56,69 +56,10 @@ const createProject = async (req, res) => {
 };
 
 const updateProject = async (req, res) => {
-  const userId = req.user.id;
-  const { id } = req.params;
-  const { name, description, startDate, endDate, tags, version } = req.body;
-
-  if (!name || !description || !startDate || version === undefined) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Required fields missing" });
-  }
-
-  try {
-    const project = await prisma.project.findUnique({
-      where: { id },
-    });
-
-    if (!project || project.userId !== userId) {
-      return res.status(404).json({
-        success: false,
-        message: "Project not found or unauthorized",
-      });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user || user.version !== Number(version)) {
-      return res.status(409).json({
-        success: false,
-        message: "Conflict detected: Profile has changed. Please refresh.",
-      });
-    }
-
-    const updatedProject = await prisma.project.update({
-      where: { id },
-      data: {
-        name: name.trim(),
-        description: description.trim(),
-        startDate: new Date(startDate),
-        endDate: endDate ? new Date(endDate) : null,
-        tags: Array.isArray(tags) ? tags.map((t) => t.trim()) : [],
-      },
-    });
-
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: {
-        version: { increment: 1 },
-      },
-      select: { version: true },
-    });
-
-    res.json({
-      success: true,
-      data: updatedProject,
-      newVersion: updatedUser.version,
-    });
-  } catch (error) {
-    console.error("Update project error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to update project" });
-  }
+  return res.status(403).json({
+    success: false,
+    message: "Editing project details is not allowed.",
+  });
 };
 
 const deleteProject = async (req, res) => {

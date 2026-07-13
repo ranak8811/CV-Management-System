@@ -71,7 +71,7 @@ export const router = createBrowserRouter([
       {
         path: "attributes",
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={["RECRUITER", "ADMIN"]}>
             <AttributesList />
           </ProtectedRoute>
         ),
@@ -95,7 +95,7 @@ export const router = createBrowserRouter([
       {
         path: "positions/new",
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={["RECRUITER", "ADMIN"]}>
             <PositionForm />
           </ProtectedRoute>
         ),
@@ -103,7 +103,7 @@ export const router = createBrowserRouter([
       {
         path: "positions/edit/:id",
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={["RECRUITER", "ADMIN"]}>
             <PositionForm />
           </ProtectedRoute>
         ),
@@ -119,7 +119,7 @@ export const router = createBrowserRouter([
       {
         path: "cvs",
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={["RECRUITER", "ADMIN"]}>
             <CVsList />
           </ProtectedRoute>
         ),
@@ -135,7 +135,7 @@ export const router = createBrowserRouter([
       {
         path: "users",
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={["ADMIN"]}>
             <UsersManagement />
           </ProtectedRoute>
         ),
