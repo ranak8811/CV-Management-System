@@ -542,28 +542,42 @@ const getCVs = async (req, res) => {
       whereClause.isPublished = true;
     }
 
+    const andConditions = [];
+
     if (search) {
-      whereClause.OR = [
-        { name: { contains: search, mode: "insensitive" } },
-        { candidate: { name: { contains: search, mode: "insensitive" } } },
-        {
-          attributeValues: {
-            some: {
-              value: { contains: search, mode: "insensitive" },
+      andConditions.push({
+        OR: [
+          { name: { contains: search, mode: "insensitive" } },
+          { candidate: { name: { contains: search, mode: "insensitive" } } },
+          {
+            candidate: {
+              userAttributes: {
+                some: {
+                  value: { contains: search, mode: "insensitive" },
+                },
+              },
             },
           },
-        },
-      ];
+        ],
+      });
     }
 
     if (category) {
-      whereClause.attributeValues = {
-        some: {
-          attribute: {
-            category: category,
+      andConditions.push({
+        candidate: {
+          userAttributes: {
+            some: {
+              attribute: {
+                category: category,
+              },
+            },
           },
         },
-      };
+      });
+    }
+
+    if (andConditions.length > 0) {
+      whereClause.AND = andConditions;
     }
 
     const totalItems = await prisma.cV.count({ where: whereClause });
@@ -575,12 +589,16 @@ const getCVs = async (req, res) => {
       take: limit,
       include: {
         candidate: {
-          select: { id: true, name: true, email: true },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            userAttributes: {
+              include: { attribute: true },
+            },
+          },
         },
         position: true,
-        attributeValues: {
-          include: { attribute: true },
-        },
         likes: true,
         _count: { select: { likes: true } },
       },
