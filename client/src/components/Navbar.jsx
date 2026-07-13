@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 import useTheme from "../hooks/useTheme";
@@ -9,11 +10,27 @@ const Navbar = () => {
   const { theme, toggleTheme } = useTheme();
   const { locale, switchLanguage } = useLanguage();
   const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleLogout = () => {
     logout();
     toast.success(locale === "en" ? "Logged out!" : "¡Sesión cerrada!");
     navigate("/");
+  };
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    const trimmed = searchQuery.trim();
+    if (!trimmed) return;
+
+    if (user && (user.role === "RECRUITER" || user.role === "ADMIN")) {
+      navigate(`/dashboard/cvs?search=${encodeURIComponent(trimmed)}`);
+    } else if (user) {
+      navigate(`/dashboard/positions?search=${encodeURIComponent(trimmed)}`);
+    } else {
+      navigate(`/positions?search=${encodeURIComponent(trimmed)}`);
+    }
+    setSearchQuery("");
   };
 
   const linkClass = ({ isActive }) =>
@@ -25,35 +42,56 @@ const Navbar = () => {
 
   return (
     <div className="bg-base-200 border-b border-base-300 sticky top-0 z-50">
-      <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-        <Link
-          to="/"
-          className="text-sm font-extrabold text-primary tracking-wider uppercase"
-        >
-          CV Management
-        </Link>
+      <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-6">
+          <Link
+            to="/"
+            className="text-sm font-extrabold text-primary tracking-wider uppercase"
+          >
+            CV Management
+          </Link>
 
-        <nav className="hidden md:flex items-center gap-2">
-          <NavLink to="/" className={linkClass}>
-            Home
-          </NavLink>
-          <NavLink to="/positions" className={linkClass}>
-            Positions
-          </NavLink>
-
-          {user && (
-            <>
-              <NavLink to="/dashboard" end className={linkClass}>
-                Dashboard
-              </NavLink>
-              <NavLink to="/dashboard/profile" className={linkClass}>
-                My Profile
-              </NavLink>
-            </>
-          )}
-        </nav>
+          <form
+            onSubmit={handleSearchSubmit}
+            className="hidden md:flex items-center bg-base-100 border border-base-300 rounded px-2.5 py-1.5 h-8 w-60"
+          >
+            <input
+              type="text"
+              placeholder="Search positions/CVs..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="bg-transparent border-none text-[11px] focus:outline-none w-full placeholder:text-gray-400"
+            />
+            <button
+              type="submit"
+              className="text-gray-400 hover:text-base-content text-xs"
+            >
+              🔍
+            </button>
+          </form>
+        </div>
 
         <div className="flex items-center gap-3">
+          <nav className="hidden lg:flex items-center gap-2 mr-2">
+            <NavLink to="/" className={linkClass}>
+              Home
+            </NavLink>
+            <NavLink to="/positions" className={linkClass}>
+              Positions
+            </NavLink>
+
+            {user && (
+              <>
+                <NavLink to="/dashboard" end className={linkClass}>
+                  Dashboard
+                </NavLink>
+                <NavLink to="/dashboard/profile" className={linkClass}>
+                  My Profile
+                </NavLink>
+              </>
+            )}
+          </nav>
+
           <button
             onClick={toggleTheme}
             className="btn btn-xs btn-outline btn-neutral"

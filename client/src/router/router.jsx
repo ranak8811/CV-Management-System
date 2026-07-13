@@ -16,6 +16,7 @@ import PositionDetail from "../pages/Positions/PositionDetail";
 import Profile from "../pages/Profile/Profile";
 import CVDetail from "../pages/CVs/CVDetail";
 import UsersManagement from "../pages/Admin/UsersManagement";
+import CVsList from "../pages/CVs/CVsList";
 
 export const router = createBrowserRouter([
   {
@@ -112,6 +113,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <PositionDetail />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "cvs",
+        element: (
+          <ProtectedRoute>
+            <CVsList />
           </ProtectedRoute>
         ),
       },
