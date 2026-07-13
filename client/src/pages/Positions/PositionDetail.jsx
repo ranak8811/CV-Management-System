@@ -322,6 +322,30 @@ const PositionDetail = () => {
                     "No technology restrictions (Any)"}
                 </span>
               </div>
+              {position.isPublic ? (
+                <div className="col-span-1 md:col-span-2 pt-2 border-t border-base-300">
+                  <span className="font-semibold block">Access Mode:</span>
+                  <span className="text-success font-semibold text-xs">Public Access (Open to all candidates)</span>
+                </div>
+              ) : (
+                <div className="col-span-1 md:col-span-2 pt-2 border-t border-base-300 flex flex-col gap-2">
+                  <span className="font-semibold block">Access Filter Rules (Requirements):</span>
+                  {position.accessRules && position.accessRules.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {position.accessRules.map((rule) => (
+                        <span
+                          key={rule.id}
+                          className="bg-base-300 text-base-content text-[11px] px-2.5 py-1 rounded font-medium border-none"
+                        >
+                          {rule.attribute?.name} {rule.operator.replace("_", " ")} {rule.value}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-gray-500 text-xs italic">No specific rules defined (Restricted to creator/admins)</span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
