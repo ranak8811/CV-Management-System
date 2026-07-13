@@ -1,8 +1,17 @@
 import { prisma } from "../config/db.js";
 
 const getAllUsers = async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+
   try {
+    const totalItems = await prisma.user.count();
+    const totalPages = Math.ceil(totalItems / limit);
+
     const users = await prisma.user.findMany({
+      skip,
+      take: limit,
       select: {
         id: true,
         name: true,
@@ -14,7 +23,16 @@ const getAllUsers = async (req, res) => {
       orderBy: { createdAt: "desc" },
     });
 
-    res.json({ success: true, data: users });
+    res.json({
+      success: true,
+      data: users,
+      pagination: {
+        totalItems,
+        totalPages,
+        currentPage: page,
+        limit,
+      },
+    });
   } catch (error) {
     console.error("Get all users error:", error);
     res
