@@ -528,6 +528,64 @@ const toggleLikeCV = async (req, res) => {
   }
 };
 
+const getCVs = async (req, res) => {
+  const { search, category } = req.query;
+  const userRole = req.user.role;
+
+  try {
+    const whereClause = {};
+
+    if (userRole === "RECRUITER") {
+      whereClause.isPublished = true;
+    }
+
+    if (search) {
+      whereClause.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { candidate: { name: { contains: search, mode: "insensitive" } } },
+        {
+          attributeValues: {
+            some: {
+              value: { contains: search, mode: "insensitive" },
+            },
+          },
+        },
+      ];
+    }
+
+    if (category) {
+      whereClause.attributeValues = {
+        some: {
+          attribute: {
+            category: category,
+          },
+        },
+      };
+    }
+
+    const cvs = await prisma.cV.findMany({
+      where: whereClause,
+      include: {
+        candidate: {
+          select: { id: true, name: true, email: true },
+        },
+        position: true,
+        attributeValues: {
+          include: { attribute: true },
+        },
+        likes: true,
+        _count: { select: { likes: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    res.json({ success: true, data: cvs });
+  } catch (error) {
+    console.error("Get all CVs error:", error);
+    res.status(500).json({ success: false, message: "Failed to retrieve CVs" });
+  }
+};
+
 export {
   createCV,
   getCVById,
@@ -537,4 +595,5 @@ export {
   saveCVAttributeValue,
   deleteCV,
   toggleLikeCV,
+  getCVs,
 };
