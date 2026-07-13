@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../../utils/api";
 import toast from "react-hot-toast";
 import Loading from "../../components/Loading";
+import Table from "../../components/Table";
 
 const CVsList = () => {
   const location = useLocation();
@@ -22,17 +23,31 @@ const CVsListInner = () => {
 
   const [search, setSearch] = useState(() => getQueryParam());
   const [category, setCategory] = useState("");
+  const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState([]);
 
-  const { data: cvs = [], isLoading } = useQuery({
-    queryKey: ["admin-cvs-list", { search, category }],
+  const [prevSearch, setPrevSearch] = useState(() => getQueryParam());
+  const [prevCategory, setPrevCategory] = useState("");
+
+  if (search !== prevSearch || category !== prevCategory) {
+    setPrevSearch(search);
+    setPrevCategory(category);
+    setPage(1);
+    setSelectedIds([]);
+  }
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-cvs-list", { search, category, page }],
     queryFn: async () => {
       const res = await api.get(
-        `/api/cvs?search=${search}&category=${category}`
+        `/api/cvs?search=${search}&category=${category}&page=${page}&limit=10`,
       );
-      return res.data.success ? res.data.data : [];
+      return res.data.success ? res.data : { data: [], pagination: null };
     },
   });
+
+  const cvs = data?.data || [];
+  const pagination = data?.pagination || null;
 
   const { data: libraryAttributes = [] } = useQuery({
     queryKey: ["attributes"],
@@ -43,7 +58,7 @@ const CVsListInner = () => {
   });
 
   const categories = Array.from(
-    new Set(libraryAttributes.map((a) => a.category))
+    new Set(libraryAttributes.map((a) => a.category)),
   );
 
   const likeMutation = useMutation({
@@ -70,11 +85,12 @@ const CVsListInner = () => {
     }
   };
 
-  const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      setSelectedIds(cvs.map((c) => c.id));
+  const handleSelectAll = (checked, visibleRows) => {
+    const visibleIds = visibleRows.map((r) => r.id);
+    if (checked) {
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...visibleIds])));
     } else {
-      setSelectedIds([]);
+      setSelectedIds((prev) => prev.filter((id) => !visibleIds.includes(id)));
     }
   };
 
@@ -88,6 +104,45 @@ const CVsListInner = () => {
     likeMutation.mutate(selectedIds[0]);
   };
 
+  const columns = [
+    {
+      header: "Candidate Name",
+      accessor: "candidate",
+      render: (row) => <span className="font-bold">{row.candidate?.name}</span>,
+    },
+    {
+      header: "CV Profile Name",
+      accessor: "name",
+      render: (row) => (
+        <span
+          onClick={() => navigate(`/dashboard/cvs/${row.id}`)}
+          className="text-primary font-bold hover:underline cursor-pointer"
+        >
+          {row.name}
+        </span>
+      ),
+    },
+    {
+      header: "Applied Position",
+      accessor: "position",
+      render: (row) => <span>{row.position?.title}</span>,
+    },
+    {
+      header: "Likes Count",
+      render: (row) => (
+        <span className="badge badge-accent text-white">
+          {row._count?.likes || 0} Likes
+        </span>
+      ),
+    },
+    {
+      header: "Submitted On",
+      render: (row) => (
+        <span>{new Date(row.createdAt).toLocaleDateString()}</span>
+      ),
+    },
+  ];
+
   return (
     <div className="p-4 font-sans bg-base-100 text-base-content min-h-screen">
       <h2 className="text-2xl font-bold mb-6">
@@ -99,19 +154,13 @@ const CVsListInner = () => {
           type="text"
           placeholder="Search by candidate name, CV title, or attribute value..."
           value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setSelectedIds([]);
-          }}
+          onChange={(e) => setSearch(e.target.value)}
           className="input input-bordered w-full md:w-96"
         />
 
         <select
           value={category}
-          onChange={(e) => {
-            setCategory(e.target.value);
-            setSelectedIds([]);
-          }}
+          onChange={(e) => setCategory(e.target.value)}
           className="select select-bordered w-full md:w-64"
         >
           <option value="">-- All Custom Categories --</option>
@@ -136,7 +185,6 @@ const CVsListInner = () => {
           >
             Open CV Details
           </button>
-
           <button
             onClick={handleLikeToggle}
             disabled={selectedIds.length !== 1 || likeMutation.isPending}
@@ -152,62 +200,16 @@ const CVsListInner = () => {
           <Loading />
           <span className="block mt-2">Loading CV database...</span>
         </div>
-      ) : cvs.length === 0 ? (
-        <div className="text-center p-8 text-gray-500">
-          No matching candidate CVs found.
-        </div>
       ) : (
-        <div className="overflow-x-auto border border-base-300 rounded-md">
-          <table className="table w-full bg-base-100 text-sm">
-            <thead>
-              <tr className="bg-base-200">
-                <th className="w-12 text-center">
-                  <input
-                    type="checkbox"
-                    checked={
-                      selectedIds.length === cvs.length && cvs.length > 0
-                    }
-                    onChange={handleSelectAll}
-                    className="checkbox checkbox-sm"
-                  />
-                </th>
-                <th>Candidate Name</th>
-                <th>CV Profile Name</th>
-                <th>Applied Position</th>
-                <th>Likes Count</th>
-                <th>Submitted On</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cvs.map((c) => (
-                <tr key={c.id} className="hover:bg-base-200">
-                  <td className="text-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.includes(c.id)}
-                      onChange={() => handleSelectRow(c.id)}
-                      className="checkbox checkbox-sm"
-                    />
-                  </td>
-                  <td className="font-bold">{c.candidate.name}</td>
-                  <td
-                    onClick={() => navigate(`/dashboard/cvs/${c.id}`)}
-                    className="text-primary font-bold hover:underline cursor-pointer"
-                  >
-                    {c.name}
-                  </td>
-                  <td>{c.position?.title}</td>
-                  <td>
-                    <span className="badge badge-accent text-white">
-                      {c._count?.likes || 0} Likes
-                    </span>
-                  </td>
-                  <td>{new Date(c.createdAt).toLocaleDateString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table
+          columns={columns}
+          data={cvs}
+          selectedIds={selectedIds}
+          onSelectRow={handleSelectRow}
+          onSelectAll={handleSelectAll}
+          pagination={pagination}
+          onPageChange={(newPage) => setPage(newPage)}
+        />
       )}
     </div>
   );
