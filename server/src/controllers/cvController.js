@@ -531,6 +531,9 @@ const toggleLikeCV = async (req, res) => {
 const getCVs = async (req, res) => {
   const { search, category } = req.query;
   const userRole = req.user.role;
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
 
   try {
     const whereClause = {};
@@ -563,8 +566,13 @@ const getCVs = async (req, res) => {
       };
     }
 
+    const totalItems = await prisma.cV.count({ where: whereClause });
+    const totalPages = Math.ceil(totalItems / limit);
+
     const cvs = await prisma.cV.findMany({
       where: whereClause,
+      skip,
+      take: limit,
       include: {
         candidate: {
           select: { id: true, name: true, email: true },
@@ -579,7 +587,16 @@ const getCVs = async (req, res) => {
       orderBy: { createdAt: "desc" },
     });
 
-    res.json({ success: true, data: cvs });
+    res.json({
+      success: true,
+      data: cvs,
+      pagination: {
+        totalItems,
+        totalPages,
+        currentPage: page,
+        limit,
+      },
+    });
   } catch (error) {
     console.error("Get all CVs error:", error);
     res.status(500).json({ success: false, message: "Failed to retrieve CVs" });
