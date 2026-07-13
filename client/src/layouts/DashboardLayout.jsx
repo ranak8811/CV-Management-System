@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 import useLanguage from "../hooks/useLanguage";
@@ -9,11 +10,25 @@ const DashboardLayout = () => {
   const { t, locale, switchLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleLogout = () => {
     logout();
     toast.success(locale === "en" ? "Logged out!" : "¡Sesión cerrada!");
     navigate("/");
+  };
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    const trimmed = searchQuery.trim();
+    if (!trimmed) return;
+
+    if (user && (user.role === "RECRUITER" || user.role === "ADMIN")) {
+      navigate(`/dashboard/cvs?search=${encodeURIComponent(trimmed)}`);
+    } else {
+      navigate(`/dashboard/positions?search=${encodeURIComponent(trimmed)}`);
+    }
+    setSearchQuery("");
   };
 
   const activeSidebarClass = ({ isActive }) =>
@@ -23,9 +38,12 @@ const DashboardLayout = () => {
         : "hover:bg-base-300 text-primary"
     }`;
 
+  const isRecruiterOrAdmin =
+    user && (user.role === "RECRUITER" || user.role === "ADMIN");
+
   return (
     <div className="min-h-screen bg-base-100 text-base-content flex flex-col md:flex-row">
-      <aside className="w-full md:w-64 bg-base-200 border-r border-base-300 p-4 flex flex-col justify-between md:h-screen md:sticky md:top-0 overflow-y-auto">
+      <aside className="w-full md:w-64 bg-base-200 border-r border-base-300 p-4 flex flex-col justify-between md:h-screen md:sticky md:top-0 overflow-y-auto z-20">
         <div>
           <Link to={"/"}>
             <h2 className="text-md font-extrabold mb-6 text-primary tracking-wider uppercase">
@@ -49,6 +67,12 @@ const DashboardLayout = () => {
             <NavLink to="/dashboard/positions" className={activeSidebarClass}>
               Positions
             </NavLink>
+
+            {isRecruiterOrAdmin && (
+              <NavLink to="/dashboard/cvs" className={activeSidebarClass}>
+                Browse CVs
+              </NavLink>
+            )}
 
             {(user?.role === "RECRUITER" || user?.role === "ADMIN") && (
               <NavLink
@@ -115,9 +139,41 @@ const DashboardLayout = () => {
         </div>
       </aside>
 
-      <main className="flex-1 p-6 overflow-y-auto h-screen">
-        <Outlet />
-      </main>
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+        <header className="h-14 bg-base-200 border-b border-base-300 flex items-center justify-between px-6 z-10 shrink-0">
+          <div className="flex-1 max-w-md">
+            <form
+              onSubmit={handleSearchSubmit}
+              className="flex items-center bg-base-100 border border-base-300 rounded px-2.5 py-1.5 h-8"
+            >
+              <input
+                type="text"
+                placeholder={
+                  isRecruiterOrAdmin
+                    ? "Search candidate CVs..."
+                    : "Search positions..."
+                }
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-transparent border-none text-[11px] focus:outline-none w-full placeholder:text-gray-400"
+              />
+              <button
+                type="submit"
+                className="text-gray-400 hover:text-base-content text-xs"
+              >
+                🔍
+              </button>
+            </form>
+          </div>
+          <div className="hidden sm:flex items-center gap-4 text-xs font-semibold text-gray-500">
+            <span>Dashboard Workspace</span>
+          </div>
+        </header>
+
+        <main className="flex-1 p-6 overflow-y-auto bg-base-100">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 };
