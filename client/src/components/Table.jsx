@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 const Table = ({
   columns = [],
   data = [],
@@ -7,36 +5,17 @@ const Table = ({
   onSelectRow,
   onSelectAll,
   idKey = "id",
+  pagination = null,
+  onPageChange,
 }) => {
-  const [prevDataLength, setPrevDataLength] = useState(data.length);
-  const [currentPage, setCurrentPage] = useState(1);
-
-  if (data.length !== prevDataLength) {
-    setPrevDataLength(data.length);
-    setCurrentPage(1);
-  }
-
-  const itemsPerPage = 10;
-  const totalPages = Math.ceil(data.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = Math.min(startIndex + itemsPerPage, data.length);
-  const currentRows = data.slice(startIndex, endIndex);
-
   const handleHeaderCheckboxChange = (e) => {
     if (onSelectAll) {
-      onSelectAll(e.target.checked, currentRows);
-    }
-  };
-
-  const handlePageChange = (pageNumber) => {
-    if (pageNumber >= 1 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber);
+      onSelectAll(e.target.checked, data);
     }
   };
 
   const isAllSelectedOnCurrentPage =
-    currentRows.length > 0 &&
-    currentRows.every((row) => selectedIds.includes(row[idKey]));
+    data.length > 0 && data.every((row) => selectedIds.includes(row[idKey]));
 
   const renderCell = (row, col) => {
     if (col.render) {
@@ -48,6 +27,14 @@ const Table = ({
     }
     return val !== undefined && val !== null ? String(val) : "";
   };
+
+  const totalPages = pagination?.totalPages || 1;
+  const currentPage = pagination?.currentPage || 1;
+  const limit = pagination?.limit || 10;
+  const totalItems = pagination?.totalItems || 0;
+
+  const startIndex = (currentPage - 1) * limit;
+  const endIndex = Math.min(startIndex + data.length, totalItems);
 
   return (
     <div className="flex flex-col gap-4 w-full">
@@ -73,7 +60,7 @@ const Table = ({
             </tr>
           </thead>
           <tbody>
-            {currentRows.length === 0 ? (
+            {data.length === 0 ? (
               <tr>
                 <td
                   colSpan={columns.length + (onSelectAll ? 1 : 0)}
@@ -83,7 +70,7 @@ const Table = ({
                 </td>
               </tr>
             ) : (
-              currentRows.map((row) => {
+              data.map((row) => {
                 const rowId = row[idKey];
                 const isSelected = selectedIds.includes(rowId);
 
@@ -112,20 +99,20 @@ const Table = ({
         </table>
       </div>
 
-      {totalPages > 1 && (
+      {pagination && totalPages > 1 && onPageChange && (
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-2 py-1 select-none">
           <div className="text-xs text-gray-500 font-semibold">
             Showing{" "}
             <span className="text-base-content">
-              {data.length === 0 ? 0 : startIndex + 1}
+              {totalItems === 0 ? 0 : startIndex + 1}
             </span>{" "}
             to <span className="text-base-content">{endIndex}</span> of{" "}
-            <span className="text-base-content">{data.length}</span> entries
+            <span className="text-base-content">{totalItems}</span> entries
           </div>
 
           <div className="join">
             <button
-              onClick={() => handlePageChange(currentPage - 1)}
+              onClick={() => onPageChange(currentPage - 1)}
               disabled={currentPage === 1}
               className="join-item btn btn-xs btn-outline btn-neutral"
             >
@@ -136,7 +123,7 @@ const Table = ({
               (pNum) => (
                 <button
                   key={pNum}
-                  onClick={() => handlePageChange(pNum)}
+                  onClick={() => onPageChange(pNum)}
                   className={`join-item btn btn-xs ${
                     currentPage === pNum
                       ? "btn-primary text-primary-content"
@@ -145,11 +132,11 @@ const Table = ({
                 >
                   {pNum}
                 </button>
-              )
+              ),
             )}
 
             <button
-              onClick={() => handlePageChange(currentPage + 1)}
+              onClick={() => onPageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
               className="join-item btn btn-xs btn-outline btn-neutral"
             >
