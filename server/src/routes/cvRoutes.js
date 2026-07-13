@@ -8,13 +8,15 @@ import {
   saveCVAttributeValue,
   deleteCV,
   toggleLikeCV,
+  getCVs,
 } from "../controllers/cvController.js";
-import { protect, authorize } from "../middlewares/authMiddleware.js";
+import { protect } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
 router.get("/my", protect, getCandidateCVs);
 router.get("/position/:positionId", protect, getPositionCVs);
+router.get("/", protect, getCVs);
 router.get("/:id", protect, getCVById);
 router.post("/", protect, createCV);
 router.put("/:id", protect, updateCV);
