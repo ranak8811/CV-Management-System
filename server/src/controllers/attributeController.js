@@ -55,6 +55,9 @@ const createAttribute = async (req, res) => {
 
 const getAttributes = async (req, res) => {
   const { search, category } = req.query;
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
 
   try {
     const whereClause = {};
@@ -70,13 +73,27 @@ const getAttributes = async (req, res) => {
       whereClause.category = category;
     }
 
+    const totalItems = await prisma.attribute.count({ where: whereClause });
+    const totalPages = Math.ceil(totalItems / limit);
+
     const attributes = await prisma.attribute.findMany({
       where: whereClause,
+      skip,
+      take: limit,
       include: { options: true },
       orderBy: { name: "asc" },
     });
 
-    res.json({ success: true, data: attributes });
+    res.json({
+      success: true,
+      data: attributes,
+      pagination: {
+        totalItems,
+        totalPages,
+        currentPage: page,
+        limit,
+      },
+    });
   } catch (error) {
     console.error("Fetch attributes error:", error);
     res
