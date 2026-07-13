@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import Swal from "sweetalert2";
@@ -8,11 +8,23 @@ import Loading from "../../components/Loading";
 import useAuth from "../../hooks/useAuth";
 
 const PositionsList = () => {
+  const location = useLocation();
+  return <PositionsListInner key={location.search} />;
+};
+
+const PositionsListInner = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const [search, setSearch] = useState("");
-  const [selectedIds, setSelectedIds] = useState([]);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const getQueryParam = () => {
+    const params = new URLSearchParams(location.search);
+    return params.get("search") || "";
+  };
+
+  const [search, setSearch] = useState(() => getQueryParam());
+  const [selectedIds, setSelectedIds] = useState([]);
 
   const { data: positions = [], isLoading } = useQuery({
     queryKey: ["positions", { search }],
