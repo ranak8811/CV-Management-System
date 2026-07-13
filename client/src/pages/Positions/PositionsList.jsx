@@ -6,6 +6,7 @@ import Swal from "sweetalert2";
 import api from "../../utils/api";
 import Loading from "../../components/Loading";
 import useAuth from "../../hooks/useAuth";
+import Table from "../../components/Table";
 
 const PositionsList = () => {
   const location = useLocation();
@@ -24,15 +25,27 @@ const PositionsListInner = () => {
   };
 
   const [search, setSearch] = useState(() => getQueryParam());
+  const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState([]);
 
-  const { data: positions = [], isLoading } = useQuery({
-    queryKey: ["positions", { search }],
+  const [prevSearch, setPrevSearch] = useState(() => getQueryParam());
+
+  if (search !== prevSearch) {
+    setPrevSearch(search);
+    setPage(1);
+    setSelectedIds([]);
+  }
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["positions", { search, page }],
     queryFn: async () => {
-      const res = await api.get(`/api/positions?search=${search}`);
-      return res.data.success ? res.data.data : [];
+      const res = await api.get(`/api/positions?search=${search}&page=${page}&limit=10`);
+      return res.data.success ? res.data : { data: [], pagination: null };
     },
   });
+
+  const positions = data?.data || [];
+  const pagination = data?.pagination || null;
 
   const deleteMutation = useMutation({
     mutationFn: async (ids) => {
@@ -75,11 +88,12 @@ const PositionsListInner = () => {
     }
   };
 
-  const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      setSelectedIds(positions.map((pos) => pos.id));
+  const handleSelectAll = (checked, visibleRows) => {
+    const visibleIds = visibleRows.map((r) => r.id);
+    if (checked) {
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...visibleIds])));
     } else {
-      setSelectedIds([]);
+      setSelectedIds((prev) => prev.filter((id) => !visibleIds.includes(id)));
     }
   };
 
@@ -115,6 +129,68 @@ const PositionsListInner = () => {
     navigate(`/dashboard/positions/edit/${selectedIds[0]}`);
   };
 
+  const columns = [
+    {
+      header: "Title",
+      accessor: "title",
+      render: (row) => (
+        <span
+          onClick={() => navigate(user ? `/dashboard/positions/${row.id}` : `/positions/${row.id}`)}
+          className="font-bold text-primary hover:underline cursor-pointer"
+        >
+          {row.title}
+        </span>
+      ),
+    },
+    {
+      header: "Description",
+      accessor: "description",
+      className: "max-w-xs truncate",
+    },
+    {
+      header: "Visibility",
+      accessor: "isPublic",
+      render: (row) => (
+        <span className={`badge ${row.isPublic ? "badge-success" : "badge-warning"} badge-sm`}>
+          {row.isPublic ? "Public" : "Restricted"}
+        </span>
+      ),
+    },
+    {
+      header: "Access Rules",
+      render: (row) => {
+        if (row.isPublic) {
+          return <span className="text-gray-400 italic text-xs">None (Public)</span>;
+        }
+        if (!row.accessRules || row.accessRules.length === 0) {
+          return <span className="text-gray-400 italic text-xs">No rules defined</span>;
+        }
+        return (
+          <div className="flex flex-wrap gap-1">
+            {row.accessRules.map((rule) => (
+              <span
+                key={rule.id}
+                className="badge badge-accent badge-outline text-[10px] px-1.5 py-0.5"
+              >
+                {rule.attribute?.name} {rule.operator.replace("_", " ")} {rule.value}
+              </span>
+            ))}
+          </div>
+        );
+      },
+    },
+    {
+      header: "Attributes Included",
+      render: (row) => (
+        <span className="badge badge-outline">{row.positionAttributes?.length || 0}</span>
+      ),
+    },
+    {
+      header: "Submitted CVs",
+      render: (row) => <span className="font-semibold text-primary">{row._count?.cvs || 0}</span>,
+    },
+  ];
+
   return (
     <div className="p-4 font-sans bg-base-100 text-base-content min-h-screen">
       <h2 className="text-2xl font-bold mb-6">Positions Management</h2>
@@ -124,10 +200,7 @@ const PositionsListInner = () => {
           type="text"
           placeholder="Search positions..."
           value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setSelectedIds([]);
-          }}
+          onChange={(e) => setSearch(e.target.value)}
           className="input input-bordered w-full md:w-64"
         />
       </div>
@@ -139,10 +212,7 @@ const PositionsListInner = () => {
 
         <div className="flex gap-2">
           {user && (
-            <button
-              onClick={handleAddNewClick}
-              className="btn btn-sm btn-primary"
-            >
+            <button onClick={handleAddNewClick} className="btn btn-sm btn-primary">
               + Add New
             </button>
           )}
@@ -184,79 +254,16 @@ const PositionsListInner = () => {
           <Loading />
           <span className="block mt-2">Loading Positions...</span>
         </div>
-      ) : positions.length === 0 ? (
-        <div className="text-center p-8 text-gray-500">No positions found.</div>
       ) : (
-        <div className="overflow-x-auto border border-base-300 rounded-md">
-          <table className="table w-full bg-base-100">
-            <thead>
-              <tr className="bg-base-200 text-sm">
-                <th className="w-12 text-center">
-                  <input
-                    type="checkbox"
-                    checked={
-                      selectedIds.length === positions.length &&
-                      positions.length > 0
-                    }
-                    onChange={handleSelectAll}
-                    className="checkbox checkbox-sm"
-                  />
-                </th>
-                <th>Title</th>
-                <th>Description</th>
-                <th>Visibility</th>
-                <th>Attributes Included</th>
-                <th>Submitted CVs</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {positions.map((pos) => (
-                <tr key={pos.id} className="hover:bg-base-200 text-sm">
-                  <td className="text-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.includes(pos.id)}
-                      onChange={() => handleSelectRow(pos.id)}
-                      className="checkbox checkbox-sm"
-                    />
-                  </td>
-
-                  <td
-                    onClick={() =>
-                      navigate(
-                        user
-                          ? `/dashboard/positions/${pos.id}`
-                          : `/positions/${pos.id}`,
-                      )
-                    }
-                    className="font-bold text-primary hover:underline cursor-pointer"
-                  >
-                    {pos.title}
-                  </td>
-                  <td className="max-w-xs truncate">{pos.description}</td>
-                  <td>
-                    <span
-                      className={`badge ${pos.isPublic ? "badge-success" : "badge-warning"} badge-sm`}
-                    >
-                      {pos.isPublic ? "Public" : "Restricted"}
-                    </span>
-                  </td>
-                  <td>
-                    <span className="badge badge-outline">
-                      {pos.positionAttributes?.length || 0}
-                    </span>
-                  </td>
-                  <td>
-                    <span className="font-semibold text-primary">
-                      {pos._count?.cvs || 0}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table
+          columns={columns}
+          data={positions}
+          selectedIds={selectedIds}
+          onSelectRow={handleSelectRow}
+          onSelectAll={handleSelectAll}
+          pagination={pagination}
+          onPageChange={(newPage) => setPage(newPage)}
+        />
       )}
     </div>
   );

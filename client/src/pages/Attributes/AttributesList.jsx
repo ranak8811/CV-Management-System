@@ -1,18 +1,30 @@
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../../utils/api";
 import toast from "react-hot-toast";
 import Swal from "sweetalert2";
 import AttributeModal from "../../components/AttributeModal";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import Table from "../../components/Table";
 
 const AttributesList = () => {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
+  const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState([]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [attributeToEdit, setAttributeToEdit] = useState(null);
+
+  const [prevSearch, setPrevSearch] = useState("");
+  const [prevCategory, setPrevCategory] = useState("");
+
+  if (search !== prevSearch || category !== prevCategory) {
+    setPrevSearch(search);
+    setPrevCategory(category);
+    setPage(1);
+    setSelectedIds([]);
+  }
 
   const categories = [
     "Certification",
@@ -22,15 +34,18 @@ const AttributesList = () => {
     "Technical Skills",
   ];
 
-  const { data: attributes = [], isLoading } = useQuery({
-    queryKey: ["attributes", { search, category }],
+  const { data, isLoading } = useQuery({
+    queryKey: ["attributes", { search, category, page }],
     queryFn: async () => {
       const res = await api.get(
-        `/api/attributes?search=${search}&category=${category}`,
+        `/api/attributes?search=${search}&category=${category}&page=${page}&limit=10`
       );
-      return res.data.success ? res.data.data : [];
+      return res.data.success ? res.data : { data: [], pagination: null };
     },
   });
+
+  const attributes = data?.data || [];
+  const pagination = data?.pagination || null;
 
   const deleteMutation = useMutation({
     mutationFn: async (ids) => {
@@ -57,11 +72,12 @@ const AttributesList = () => {
     }
   };
 
-  const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      setSelectedIds(attributes.map((attr) => attr.id));
+  const handleSelectAll = (checked, visibleRows) => {
+    const visibleIds = visibleRows.map((r) => r.id);
+    if (checked) {
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...visibleIds])));
     } else {
-      setSelectedIds([]);
+      setSelectedIds((prev) => prev.filter((id) => !visibleIds.includes(id)));
     }
   };
 
@@ -101,6 +117,27 @@ const AttributesList = () => {
     setSelectedIds([]);
   };
 
+  const columns = [
+    {
+      header: "Name",
+      accessor: "name",
+      render: (row) => <span className="font-bold">{row.name}</span>,
+    },
+    { header: "Category", accessor: "category" },
+    {
+      header: "Data Type",
+      accessor: "type",
+      render: (row) => <span className="badge badge-outline">{row.type}</span>,
+    },
+    {
+      header: "Dropdown Options",
+      render: (row) =>
+        row.type === "DROPDOWN" && row.options
+          ? row.options.map((opt) => opt.value).join(", ")
+          : "-",
+    },
+  ];
+
   return (
     <div className="p-4 font-sans bg-base-100 text-base-content min-h-screen">
       <h2 className="text-2xl font-bold mb-6">Attribute Library</h2>
@@ -110,18 +147,12 @@ const AttributesList = () => {
           type="text"
           placeholder="Search by prefix..."
           value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setSelectedIds([]);
-          }}
+          onChange={(e) => setSearch(e.target.value)}
           className="input input-bordered w-full md:w-64"
         />
         <select
           value={category}
-          onChange={(e) => {
-            setCategory(e.target.value);
-            setSelectedIds([]);
-          }}
+          onChange={(e) => setCategory(e.target.value)}
           className="select select-bordered w-full md:w-64"
         >
           <option value="">All Categories</option>
@@ -138,13 +169,9 @@ const AttributesList = () => {
           Selected: <span className="text-primary">{selectedIds.length}</span>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={handleAddNewClick}
-            className="btn btn-sm btn-primary"
-          >
+          <button onClick={handleAddNewClick} className="btn btn-sm btn-primary">
             + Add New
           </button>
-
           <button
             onClick={handleEditClick}
             disabled={selectedIds.length !== 1}
@@ -152,7 +179,6 @@ const AttributesList = () => {
           >
             Edit
           </button>
-
           <button
             onClick={handleDeleteSelected}
             disabled={selectedIds.length === 0 || deleteMutation.isPending}
@@ -165,58 +191,16 @@ const AttributesList = () => {
 
       {isLoading ? (
         <div className="text-center p-8">Loading Attributes...</div>
-      ) : attributes.length === 0 ? (
-        <div className="text-center p-8 text-gray-500">
-          No attributes found.
-        </div>
       ) : (
-        <div className="overflow-x-auto border border-base-300 rounded-md">
-          <table className="table w-full">
-            <thead>
-              <tr className="bg-base-200">
-                <th className="w-12 text-center">
-                  <input
-                    type="checkbox"
-                    checked={
-                      selectedIds.length === attributes.length &&
-                      attributes.length > 0
-                    }
-                    onChange={handleSelectAll}
-                    className="checkbox checkbox-sm"
-                  />
-                </th>
-                <th>Name</th>
-                <th>Category</th>
-                <th>Data Type</th>
-                <th>Dropdown Options</th>
-              </tr>
-            </thead>
-            <tbody>
-              {attributes.map((attr) => (
-                <tr key={attr.id} className="hover:bg-base-200">
-                  <td className="text-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.includes(attr.id)}
-                      onChange={() => handleSelectRow(attr.id)}
-                      className="checkbox checkbox-sm"
-                    />
-                  </td>
-                  <td className="font-bold">{attr.name}</td>
-                  <td>{attr.category}</td>
-                  <td>
-                    <span className="badge badge-outline">{attr.type}</span>
-                  </td>
-                  <td className="text-sm">
-                    {attr.type === "DROPDOWN"
-                      ? attr.options.map((opt) => opt.value).join(", ")
-                      : "-"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table
+          columns={columns}
+          data={attributes}
+          selectedIds={selectedIds}
+          onSelectRow={handleSelectRow}
+          onSelectAll={handleSelectAll}
+          pagination={pagination}
+          onPageChange={(newPage) => setPage(newPage)}
+        />
       )}
 
       <AttributeModal
