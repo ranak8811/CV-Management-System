@@ -27,11 +27,13 @@ const Register = () => {
       return res.data;
     },
     onSuccess: (data) => {
-      handleLoginSuccess(data.token, data.user);
       toast.success(
-        locale === "en" ? "Registration successful!" : "¡Registro exitoso!",
+        data.message ||
+          (locale === "en"
+            ? "Registration successful! Please verify your email."
+            : "¡Registro exitoso! Por favor verifique su correo electrónico.")
       );
-      navigate("/");
+      navigate("/login");
     },
     onError: (err) => {
       console.error(err);

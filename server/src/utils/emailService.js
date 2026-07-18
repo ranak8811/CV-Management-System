@@ -80,6 +80,9 @@ export async function sendVerificationEmail(email, token, name = "User") {
 
       if (!response.ok) {
         console.error("Brevo API Error Response:", data);
+        console.log("-----------------------------------------");
+        console.log(`Fallback Verification Link (due to Brevo error): ${verificationLink}`);
+        console.log("-----------------------------------------");
       } else {
         console.log(
           `Email sent successfully to ${email}. Message ID:`,
@@ -88,6 +91,9 @@ export async function sendVerificationEmail(email, token, name = "User") {
       }
     } catch (error) {
       console.error("Network Error sending email via Brevo:", error);
+      console.log("-----------------------------------------");
+      console.log(`Fallback Verification Link (due to network error): ${verificationLink}`);
+      console.log("-----------------------------------------");
     }
   }, 100);
 }

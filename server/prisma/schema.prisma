@@ -31,6 +31,8 @@ model User {
   updatedAt DateTime @updatedAt
   version   Int      @default(1)
 
+  verificationToken String? @map("verification_token")
+
   userAttributes  UserAttributeValue[]
   projects        Project[]
   cvs             CV[]

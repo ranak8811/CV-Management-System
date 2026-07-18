@@ -1,5 +1,6 @@
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { Link, useNavigate, Navigate } from "react-router-dom";
+import { Link, useNavigate, Navigate, useSearchParams } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import useAuth from "../../hooks/useAuth";
 import useLanguage from "../../hooks/useLanguage";
@@ -13,6 +14,18 @@ const Login = () => {
   const { theme, toggleTheme } = useTheme();
   const { locale, switchLanguage } = useLanguage();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get("verified") === "true") {
+      toast.success(
+        locale === "en"
+          ? "Your email has been verified successfully! You can now log in."
+          : "¡Tu correo electrónico ha sido verificado con éxito! Ahora puedes iniciar sesión."
+      );
+      navigate("/login", { replace: true });
+    }
+  }, [searchParams, locale, navigate]);
 
   const {
     register,

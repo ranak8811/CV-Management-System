@@ -1,7 +1,9 @@
 import { OAuth2Client } from "google-auth-library";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { prisma } from "../config/db.js";
+import { sendVerificationEmail } from "../utils/emailService.js";
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -13,7 +15,7 @@ const generateToken = (user) => {
       role: user.role,
     },
     process.env.JWT_SECRET,
-    { expiresIn: "30d" },
+    { expiresIn: "30d" }
   );
 };
 
@@ -83,6 +85,7 @@ const registerUser = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const fullName = `${firstName.trim()} ${lastName.trim()}`;
+    const verificationToken = crypto.randomBytes(32).toString("hex");
 
     const user = await prisma.user.create({
       data: {
@@ -90,6 +93,7 @@ const registerUser = async (req, res) => {
         name: fullName,
         password: hashedPassword,
         role: "CANDIDATE",
+        verificationToken,
       },
     });
 
@@ -98,18 +102,11 @@ const registerUser = async (req, res) => {
     await ensureAndSeedValue(user.id, "Personal Photo", image || "");
     await ensureAndSeedValue(user.id, "Location", "");
 
-    const token = generateToken(user);
+    await sendVerificationEmail(normalizedEmail, verificationToken, user.name);
 
     res.status(201).json({
       success: true,
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        image: await getPersonalPhoto(user.id),
-      },
+      message: "Registration successful! Please verify your email address. Check your inbox for the verification link.",
     });
   } catch (error) {
     console.error("Registration error:", error);
@@ -146,6 +143,13 @@ const loginUser = async (req, res) => {
       });
     }
 
+    if (user.verificationToken) {
+      return res.status(403).json({
+        success: false,
+        message: "Please verify your email address before logging in. Check your inbox for the verification link.",
+      });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
@@ -170,6 +174,39 @@ const loginUser = async (req, res) => {
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ success: false, message: "Login failed" });
+  }
+};
+
+const verifyEmail = async (req, res) => {
+  const { token } = req.query;
+
+  if (!token) {
+    return res.status(400).send("<h1>Verification token is missing.</h1>");
+  }
+
+  try {
+    const user = await prisma.user.findFirst({
+      where: { verificationToken: token },
+    });
+
+    if (!user) {
+      return res
+        .status(400)
+        .send("<h1>Invalid or expired verification token.</h1>");
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { verificationToken: null },
+    });
+
+    const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+    return res.redirect(`${clientUrl}/login?verified=true`);
+  } catch (error) {
+    console.error("Email verification error:", error);
+    res
+      .status(500)
+      .send("<h1>Internal Server Error during email verification.</h1>");
   }
 };
 
@@ -203,15 +240,31 @@ const googleLogin = async (req, res) => {
       });
     }
 
+    if (user && user.verificationToken) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { verificationToken: null },
+      });
+      user.verificationToken = null;
+    }
+
     if (!user) {
       user = await prisma.user.create({
         data: {
           email: normalizedEmail,
           name,
           role: "CANDIDATE",
-          image: await getPersonalPhoto(user.id),
+          verificationToken: null,
         },
       });
+
+      const nameParts = name ? name.split(" ") : ["Google", "User"];
+      const firstName = nameParts[0];
+      const lastName = nameParts.slice(1).join(" ") || "";
+      await ensureAndSeedValue(user.id, "First Name", firstName);
+      await ensureAndSeedValue(user.id, "Last Name", lastName);
+      await ensureAndSeedValue(user.id, "Personal Photo", payload.picture || "");
+      await ensureAndSeedValue(user.id, "Location", "");
     }
 
     const token = generateToken(user);
@@ -224,6 +277,7 @@ const googleLogin = async (req, res) => {
         email: user.email,
         name: user.name,
         role: user.role,
+        image: await getPersonalPhoto(user.id),
       },
     });
   } catch (error) {
@@ -258,7 +312,7 @@ const githubLogin = async (req, res) => {
           client_secret: process.env.GITHUB_CLIENT_SECRET,
           code,
         }),
-      },
+      }
     );
 
     const tokenData = await tokenResponse.json();
@@ -291,7 +345,7 @@ const githubLogin = async (req, res) => {
     if (!userResponse.ok) {
       const errorText = await userResponse.text();
       console.error(
-        `Failed to fetch GitHub user profile. Status: ${userResponse.status}, Error: ${errorText}`,
+        `Failed to fetch GitHub user profile. Status: ${userResponse.status}, Error: ${errorText}`
       );
       return res.status(500).json({
         success: false,
@@ -313,7 +367,7 @@ const githubLogin = async (req, res) => {
       if (!emailsResponse.ok) {
         const errorText = await emailsResponse.text();
         console.error(
-          `Failed to fetch GitHub user emails. Status: ${emailsResponse.status}, Response: ${errorText}`,
+          `Failed to fetch GitHub user emails. Status: ${emailsResponse.status}, Response: ${errorText}`
         );
         return res.status(500).json({
           success: false,
@@ -349,14 +403,31 @@ const githubLogin = async (req, res) => {
       });
     }
 
+    if (user && user.verificationToken) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { verificationToken: null },
+      });
+      user.verificationToken = null;
+    }
+
     if (!user) {
       user = await prisma.user.create({
         data: {
           email: normalizedEmail,
           name: userData.name || userData.login,
           role: "CANDIDATE",
+          verificationToken: null,
         },
       });
+
+      const nameParts = (userData.name || userData.login).split(" ");
+      const firstName = nameParts[0];
+      const lastName = nameParts.slice(1).join(" ") || "";
+      await ensureAndSeedValue(user.id, "First Name", firstName);
+      await ensureAndSeedValue(user.id, "Last Name", lastName);
+      await ensureAndSeedValue(user.id, "Personal Photo", userData.avatar_url || "");
+      await ensureAndSeedValue(user.id, "Location", "");
     }
 
     const token = generateToken(user);
@@ -380,4 +451,4 @@ const githubLogin = async (req, res) => {
   }
 };
 
-export { registerUser, loginUser, googleLogin, githubLogin };
+export { registerUser, loginUser, verifyEmail, googleLogin, githubLogin };

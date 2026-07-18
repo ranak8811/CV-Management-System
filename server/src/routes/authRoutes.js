@@ -4,6 +4,7 @@ import {
   googleLogin,
   registerUser,
   loginUser,
+  verifyEmail,
 } from "../controllers/authController.js";
 import { protect } from "../middlewares/authMiddleware.js";
 import { prisma } from "../config/db.js";
@@ -12,6 +13,7 @@ const router = express.Router();
 
 router.post("/register", registerUser);
 router.post("/login", loginUser);
+router.get("/verify", verifyEmail);
 router.post("/google", googleLogin);
 router.post("/github", githubLogin);
 
