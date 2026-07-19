@@ -5,6 +5,7 @@ import api from "../../utils/api";
 import toast from "react-hot-toast";
 import Loading from "../../components/Loading";
 import Table from "../../components/Table";
+import useLanguage from "../../hooks/useLanguage";
 
 const CVsList = () => {
   const location = useLocation();
@@ -12,6 +13,7 @@ const CVsList = () => {
 };
 
 const CVsListInner = () => {
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
@@ -40,7 +42,7 @@ const CVsListInner = () => {
     queryKey: ["admin-cvs-list", { search, category, page }],
     queryFn: async () => {
       const res = await api.get(
-        `/api/cvs?search=${search}&category=${category}&page=${page}&limit=10`,
+        `/api/cvs?search=${search}&category=${category}&page=${page}&limit=10`
       );
       return res.data.success ? res.data : { data: [], pagination: null };
     },
@@ -58,7 +60,7 @@ const CVsListInner = () => {
   });
 
   const categories = Array.from(
-    new Set(libraryAttributes.map((a) => a.category)),
+    new Set(libraryAttributes.map((a) => a.category))
   );
 
   const likeMutation = useMutation({
@@ -106,12 +108,12 @@ const CVsListInner = () => {
 
   const columns = [
     {
-      header: "Candidate Name",
+      header: t("candidateName"),
       accessor: "candidate",
       render: (row) => <span className="font-bold">{row.candidate?.name}</span>,
     },
     {
-      header: "CV Profile Name",
+      header: t("cvProfileName"),
       accessor: "name",
       render: (row) => (
         <span
@@ -123,20 +125,20 @@ const CVsListInner = () => {
       ),
     },
     {
-      header: "Applied Position",
+      header: t("appliedPosition"),
       accessor: "position",
       render: (row) => <span>{row.position?.title}</span>,
     },
     {
-      header: "Likes Count",
+      header: t("likesCount"),
       render: (row) => (
         <span className="badge badge-accent text-white">
-          {row._count?.likes || 0} Likes
+          {row._count?.likes || 0} {t("likesCount")}
         </span>
       ),
     },
     {
-      header: "Submitted On",
+      header: t("submittedOn"),
       render: (row) => (
         <span>{new Date(row.createdAt).toLocaleDateString()}</span>
       ),
@@ -146,13 +148,13 @@ const CVsListInner = () => {
   return (
     <div className="p-4 font-sans bg-base-100 text-base-content min-h-screen">
       <h2 className="text-2xl font-bold mb-6">
-        Submitted Candidate Resumes (CVs)
+        {t("cvsBrowserTitle")}
       </h2>
 
       <div className="flex flex-col md:flex-row gap-3 mb-6">
         <input
           type="text"
-          placeholder="Search by candidate name, CV title, or attribute value..."
+          placeholder={t("searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="input input-bordered w-full md:w-96"
@@ -163,7 +165,7 @@ const CVsListInner = () => {
           onChange={(e) => setCategory(e.target.value)}
           className="select select-bordered w-full md:w-64"
         >
-          <option value="">-- All Custom Categories --</option>
+          <option value="">{t("allCategories", "All Categories")}</option>
           {categories.map((cat) => (
             <option key={cat} value={cat}>
               {cat}
@@ -174,7 +176,7 @@ const CVsListInner = () => {
 
       <div className="flex items-center gap-3 p-3 bg-base-200 border border-base-300 rounded-md mb-4 justify-between">
         <div className="text-sm font-semibold">
-          Selected: <span className="text-primary">{selectedIds.length}</span>
+          {t("selectedRows")}: <span className="text-primary">{selectedIds.length}</span>
         </div>
 
         <div className="flex gap-2">
@@ -183,14 +185,14 @@ const CVsListInner = () => {
             disabled={selectedIds.length !== 1}
             className="btn btn-sm btn-primary"
           >
-            Open CV Details
+            {t("openCVDetails", "Open CV Details")}
           </button>
           <button
             onClick={handleLikeToggle}
             disabled={selectedIds.length !== 1 || likeMutation.isPending}
             className="btn btn-sm btn-neutral"
           >
-            Like / Unlike
+            {t("likeUnlike", "Like / Unlike")}
           </button>
         </div>
       </div>
@@ -198,7 +200,7 @@ const CVsListInner = () => {
       {isLoading ? (
         <div className="text-center p-8">
           <Loading />
-          <span className="block mt-2">Loading CV database...</span>
+          <span className="block mt-2">{t("loadingCVs", "Loading CV database...")}</span>
         </div>
       ) : (
         <Table

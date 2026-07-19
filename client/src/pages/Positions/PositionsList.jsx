@@ -7,6 +7,7 @@ import api from "../../utils/api";
 import Loading from "../../components/Loading";
 import useAuth from "../../hooks/useAuth";
 import Table from "../../components/Table";
+import useLanguage from "../../hooks/useLanguage";
 
 const PositionsList = () => {
   const location = useLocation();
@@ -14,9 +15,11 @@ const PositionsList = () => {
 };
 
 const PositionsListInner = () => {
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const isRecruiterOrAdmin = user && (user.role === "RECRUITER" || user.role === "ADMIN");
+  const isRecruiterOrAdmin =
+    user && (user.role === "RECRUITER" || user.role === "ADMIN");
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -40,7 +43,9 @@ const PositionsListInner = () => {
   const { data, isLoading } = useQuery({
     queryKey: ["positions", { search, page }],
     queryFn: async () => {
-      const res = await api.get(`/api/positions?search=${search}&page=${page}&limit=10`);
+      const res = await api.get(
+        `/api/positions?search=${search}&page=${page}&limit=10`
+      );
       return res.data.success ? res.data : { data: [], pagination: null };
     },
   });
@@ -60,7 +65,7 @@ const PositionsListInner = () => {
       setSelectedIds([]);
     },
     onError: (err) => {
-      console.error(err);
+      console.error("Delete error:", err);
       toast.error("Some positions could not be deleted");
     },
   });
@@ -70,14 +75,14 @@ const PositionsListInner = () => {
       const res = await api.post(`/api/positions/${id}/duplicate`);
       return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["positions"] });
-      toast.success("Position duplicated successfully!");
+      toast.success(data.message || "Position duplicated successfully!");
       setSelectedIds([]);
     },
     onError: (err) => {
-      console.error(err);
-      toast.error("Failed to duplicate position");
+      console.error("Duplicate error:", err);
+      toast.error(err.response?.data?.message || "Failed to duplicate position");
     },
   });
 
@@ -132,11 +137,15 @@ const PositionsListInner = () => {
 
   const columns = [
     {
-      header: "Title",
+      header: t("title", "Title"),
       accessor: "title",
       render: (row) => (
         <span
-          onClick={() => navigate(user ? `/dashboard/positions/${row.id}` : `/positions/${row.id}`)}
+          onClick={() =>
+            navigate(
+              user ? `/dashboard/positions/${row.id}` : `/positions/${row.id}`
+            )
+          }
           className="font-bold text-primary hover:underline cursor-pointer"
         >
           {row.title}
@@ -144,27 +153,35 @@ const PositionsListInner = () => {
       ),
     },
     {
-      header: "Description",
+      header: t("description", "Description"),
       accessor: "description",
       className: "max-w-xs truncate",
     },
     {
-      header: "Visibility",
+      header: t("visibility", "Visibility"),
       accessor: "isPublic",
       render: (row) => (
-        <span className={`badge ${row.isPublic ? "badge-success" : "badge-warning"} badge-sm`}>
-          {row.isPublic ? "Public" : "Restricted"}
+        <span
+          className={`badge ${row.isPublic ? "badge-success" : "badge-warning"} badge-sm`}
+        >
+          {row.isPublic ? t("public", "Public") : t("restricted", "Restricted")}
         </span>
       ),
     },
     {
-      header: "Access Rules",
+      header: t("accessRules", "Access Rules"),
       render: (row) => {
         if (row.isPublic) {
-          return <span className="text-gray-400 italic text-xs">None (Public)</span>;
+          return (
+            <span className="text-gray-400 italic text-xs">{t("nonePublic", "None (Public)")}</span>
+          );
         }
         if (!row.accessRules || row.accessRules.length === 0) {
-          return <span className="text-gray-400 italic text-xs">No rules defined</span>;
+          return (
+            <span className="text-gray-400 italic text-xs">
+              {t("noRulesDefined", "No rules defined")}
+            </span>
+          );
         }
         return (
           <div className="flex flex-wrap gap-1">
@@ -173,7 +190,8 @@ const PositionsListInner = () => {
                 key={rule.id}
                 className="bg-base-300 text-base-content text-[10px] px-2 py-0.5 rounded font-medium border-none"
               >
-                {rule.attribute?.name} {rule.operator.replace("_", " ")} {rule.value}
+                {rule.attribute?.name} {rule.operator.replace("_", " ")}{" "}
+                {rule.value}
               </span>
             ))}
           </div>
@@ -181,25 +199,31 @@ const PositionsListInner = () => {
       },
     },
     {
-      header: "Attributes Included",
+      header: t("attributesIncluded", "Attributes Included"),
       render: (row) => (
-        <span className="badge badge-outline">{row.positionAttributes?.length || 0}</span>
+        <span className="badge badge-outline">
+          {row.positionAttributes?.length || 0}
+        </span>
       ),
     },
     {
-      header: "Submitted CVs",
-      render: (row) => <span className="font-semibold text-primary">{row._count?.cvs || 0}</span>,
+      header: t("submittedCVs", "Submitted CVs"),
+      render: (row) => (
+        <span className="font-semibold text-primary">
+          {row._count?.cvs || 0}
+        </span>
+      ),
     },
   ];
 
   return (
     <div className="p-4 font-sans bg-base-100 text-base-content min-h-screen">
-      <h2 className="text-2xl font-bold mb-6">Positions Management</h2>
+      <h2 className="text-2xl font-bold mb-6">{t("positionsListTitle")}</h2>
 
       <div className="flex flex-col md:flex-row gap-3 mb-6">
         <input
           type="text"
-          placeholder="Search positions..."
+          placeholder={t("searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="input input-bordered w-full md:w-64"
@@ -209,12 +233,15 @@ const PositionsListInner = () => {
       {isRecruiterOrAdmin && (
         <div className="flex items-center gap-3 p-3 bg-base-200 border border-base-300 rounded-md mb-4 justify-between">
           <div className="text-sm font-semibold">
-            Selected: <span className="text-primary">{selectedIds.length}</span>
+            {t("selectedRows")}: <span className="text-primary">{selectedIds.length}</span>
           </div>
 
           <div className="flex gap-2">
-            <button onClick={handleAddNewClick} className="btn btn-sm btn-primary">
-              + Add New
+            <button
+              onClick={handleAddNewClick}
+              className="btn btn-sm btn-primary"
+            >
+              + {t("addNew")}
             </button>
 
             <button
@@ -222,7 +249,7 @@ const PositionsListInner = () => {
               disabled={selectedIds.length !== 1 || duplicateMutation.isPending}
               className="btn btn-sm btn-neutral"
             >
-              Duplicate
+              {t("duplicate")}
             </button>
 
             <button
@@ -230,7 +257,7 @@ const PositionsListInner = () => {
               disabled={selectedIds.length !== 1}
               className="btn btn-sm btn-neutral"
             >
-              Edit
+              {t("edit")}
             </button>
 
             <button
@@ -238,7 +265,7 @@ const PositionsListInner = () => {
               disabled={selectedIds.length === 0 || deleteMutation.isPending}
               className="btn btn-sm btn-error"
             >
-              Delete
+              {t("delete")}
             </button>
           </div>
         </div>
@@ -247,7 +274,7 @@ const PositionsListInner = () => {
       {isLoading ? (
         <div className="text-center p-8">
           <Loading />
-          <span className="block mt-2">Loading Positions...</span>
+          <span className="block mt-2">{t("loadingPositions", "Loading Positions...")}</span>
         </div>
       ) : (
         <Table

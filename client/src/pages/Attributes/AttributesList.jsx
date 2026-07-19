@@ -5,8 +5,10 @@ import toast from "react-hot-toast";
 import Swal from "sweetalert2";
 import AttributeModal from "../../components/AttributeModal";
 import Table from "../../components/Table";
+import useLanguage from "../../hooks/useLanguage";
 
 const AttributesList = () => {
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
@@ -119,18 +121,18 @@ const AttributesList = () => {
 
   const columns = [
     {
-      header: "Name",
+      header: t("attributeName"),
       accessor: "name",
       render: (row) => <span className="font-bold">{row.name}</span>,
     },
-    { header: "Category", accessor: "category" },
+    { header: t("category"), accessor: "category" },
     {
-      header: "Data Type",
+      header: t("dataType"),
       accessor: "type",
       render: (row) => <span className="badge badge-outline">{row.type}</span>,
     },
     {
-      header: "Dropdown Options",
+      header: t("dropdownOptions", "Dropdown Options"),
       render: (row) =>
         row.type === "DROPDOWN" && row.options
           ? row.options.map((opt) => opt.value).join(", ")
@@ -140,12 +142,12 @@ const AttributesList = () => {
 
   return (
     <div className="p-4 font-sans bg-base-100 text-base-content min-h-screen">
-      <h2 className="text-2xl font-bold mb-6">Attribute Library</h2>
+      <h2 className="text-2xl font-bold mb-6">{t("attributesListTitle")}</h2>
 
       <div className="flex flex-col md:flex-row gap-3 mb-6">
         <input
           type="text"
-          placeholder="Search by prefix..."
+          placeholder={t("searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="input input-bordered w-full md:w-64"
@@ -155,7 +157,7 @@ const AttributesList = () => {
           onChange={(e) => setCategory(e.target.value)}
           className="select select-bordered w-full md:w-64"
         >
-          <option value="">All Categories</option>
+          <option value="">{t("allCategories", "All Categories")}</option>
           {categories.map((cat) => (
             <option key={cat} value={cat}>
               {cat}
@@ -166,31 +168,31 @@ const AttributesList = () => {
 
       <div className="flex items-center gap-3 p-3 bg-base-200 border border-base-300 rounded-md mb-4 justify-between">
         <div className="text-sm font-semibold">
-          Selected: <span className="text-primary">{selectedIds.length}</span>
+          {t("selectedRows")}: <span className="text-primary">{selectedIds.length}</span>
         </div>
         <div className="flex gap-2">
           <button onClick={handleAddNewClick} className="btn btn-sm btn-primary">
-            + Add New
+            + {t("addNew")}
           </button>
           <button
             onClick={handleEditClick}
             disabled={selectedIds.length !== 1}
             className="btn btn-sm btn-neutral"
           >
-            Edit
+            {t("edit")}
           </button>
           <button
             onClick={handleDeleteSelected}
             disabled={selectedIds.length === 0 || deleteMutation.isPending}
             className="btn btn-sm btn-error"
           >
-            {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            {deleteMutation.isPending ? t("deleting", "Deleting...") : t("delete")}
           </button>
         </div>
       </div>
 
       {isLoading ? (
-        <div className="text-center p-8">Loading Attributes...</div>
+        <div className="text-center p-8">{t("loadingAttributes", "Loading Attributes...")}</div>
       ) : (
         <Table
           columns={columns}

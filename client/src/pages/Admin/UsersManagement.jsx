@@ -6,8 +6,10 @@ import Swal from "sweetalert2";
 import Loading from "../../components/Loading";
 import useAuth from "../../hooks/useAuth";
 import Table from "../../components/Table";
+import useLanguage from "../../hooks/useLanguage";
 
 const UsersManagement = () => {
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
   const [page, setPage] = useState(1);
@@ -37,7 +39,7 @@ const UsersManagement = () => {
     onError: (err) => {
       console.error(err);
       toast.error(
-        err.response?.data?.message || "Failed to update block state",
+        err.response?.data?.message || "Failed to update block state"
       );
     },
   });
@@ -154,31 +156,31 @@ const UsersManagement = () => {
 
   const columns = [
     {
-      header: "Name",
+      header: t("userName", "Name"),
       accessor: "name",
       render: (row) => <span className="font-bold">{row.name}</span>,
     },
-    { header: "Email", accessor: "email" },
+    { header: t("userEmail", "Email"), accessor: "email" },
     {
-      header: "Role",
+      header: t("userRole", "Role"),
       accessor: "role",
       render: (row) => (
         <span className="badge badge-neutral badge-md">{row.role}</span>
       ),
     },
     {
-      header: "Status",
+      header: t("status", "Status"),
       accessor: "isBlocked",
       render: (row) => (
         <span
           className={`badge ${row.isBlocked ? "badge-error" : "badge-success"} text-white badge-md`}
         >
-          {row.isBlocked ? "Blocked" : "Active"}
+          {row.isBlocked ? t("blocked", "Blocked") : t("active", "Active")}
         </span>
       ),
     },
     {
-      header: "Created At",
+      header: t("submittedOn", "Created At"),
       render: (row) => (
         <span>{new Date(row.createdAt).toLocaleDateString()}</span>
       ),
@@ -187,11 +189,11 @@ const UsersManagement = () => {
 
   return (
     <div className="p-4 font-sans bg-base-100 text-base-content min-h-screen">
-      <h2 className="text-2xl font-bold mb-6">User Accounts Registry</h2>
+      <h2 className="text-2xl font-bold mb-6">{t("usersManagementTitle")}</h2>
 
       <div className="flex items-center gap-3 p-3 bg-base-200 border border-base-300 rounded-md mb-4 justify-between">
         <div className="text-sm font-semibold">
-          Selected: <span className="text-primary">{selectedIds.length}</span>
+          {t("selectedRows")}: <span className="text-primary">{selectedIds.length}</span>
         </div>
         <div className="flex gap-2">
           <button
@@ -199,21 +201,21 @@ const UsersManagement = () => {
             disabled={selectedIds.length !== 1 || blockMutation.isPending}
             className="btn btn-sm btn-neutral"
           >
-            Block / Unblock
+            {t("blockUnblock", "Block / Unblock")}
           </button>
           <button
             onClick={handleChangeRole}
             disabled={selectedIds.length !== 1 || roleMutation.isPending}
             className="btn btn-sm btn-primary"
           >
-            Change Role
+            {t("changeRole", "Change Role")}
           </button>
           <button
             onClick={handleDeleteUsers}
             disabled={selectedIds.length === 0}
             className="btn btn-sm btn-error"
           >
-            Delete User
+            {t("deleteUser", "Delete User")}
           </button>
         </div>
       </div>
@@ -221,7 +223,7 @@ const UsersManagement = () => {
       {isLoading ? (
         <div className="text-center p-8">
           <Loading />
-          <span className="block mt-2">Loading users registry...</span>
+          <span className="block mt-2">{t("loadingUsers", "Loading users registry...")}</span>
         </div>
       ) : (
         <Table
