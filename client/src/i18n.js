@@ -7,8 +7,8 @@ const resources = {
       welcome: "Welcome",
       logout: "Logout",
       congratulations: "Congratulations!",
-      successMessage:
-        "You have successfully logged in via social authentication.",
+      successMessageSocial: "You have successfully logged in via social authentication.",
+      successMessageEmail: "You have successfully logged in via email and password.",
       emailLabel: "Your Email",
       dashboardTitle: "CV Management System Dashboard",
       toggleLanguage: "Switch Language",
@@ -51,8 +51,8 @@ const resources = {
       welcome: "Bienvenido",
       logout: "Cerrar sesión",
       congratulations: "¡Felicitaciones!",
-      successMessage:
-        "Ha iniciado sesión con éxito a través de la autenticación social.",
+      successMessageSocial: "Ha iniciado sesión con éxito a través de la autenticación social.",
+      successMessageEmail: "Ha iniciado sesión con éxito a través de correo electrónico y contraseña.",
       emailLabel: "Tu correo electrónico",
       dashboardTitle: "Tablero del sistema de gestión de CV",
       toggleLanguage: "Cambiar idioma",

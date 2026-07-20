@@ -46,6 +46,7 @@ router.get("/profile", protect, async (req, res) => {
         name: user.name,
         role: user.role,
         image: photo ? photo.value : "",
+        loginMethod: user.password ? "email" : "social",
       },
     });
   } catch (error) {
