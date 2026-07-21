@@ -1,8 +1,10 @@
 import { useNavigate } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
 import useLanguage from "../../hooks/useLanguage";
+import useTitle from "../../hooks/useTitle";
 
 const Dashboard = () => {
+  useTitle("Dashboard");
   const { user } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();

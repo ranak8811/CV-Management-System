@@ -8,6 +8,7 @@ import Loading from "../../components/Loading";
 import useAuth from "../../hooks/useAuth";
 import { marked } from "marked";
 import { io } from "socket.io-client";
+import useTitle from "../../hooks/useTitle";
 
 const PositionDetail = () => {
   const { id } = useParams();
@@ -35,6 +36,8 @@ const PositionDetail = () => {
       navigate(user ? "/dashboard/positions" : "/positions");
     },
   });
+
+  useTitle(position ? position.title : "Position Details");
 
   const { data: posts = [] } = useQuery({
     queryKey: ["discussions", id],

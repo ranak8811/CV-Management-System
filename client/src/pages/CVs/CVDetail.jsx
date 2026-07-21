@@ -7,6 +7,7 @@ import Loading from "../../components/Loading";
 import useAuth from "../../hooks/useAuth";
 import { marked } from "marked";
 import html2pdf from "html2pdf.js";
+import useTitle from "../../hooks/useTitle";
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "";
@@ -30,6 +31,9 @@ const CVDetail = () => {
       return res.data.success ? res.data.data : null;
     },
   });
+
+  const cv = cvData?.cv;
+  useTitle(cv ? `${cv.name} - CV` : "CV Details");
 
   const { data: profileData } = useQuery({
     queryKey: ["profile"],

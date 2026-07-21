@@ -6,8 +6,10 @@ import Swal from "sweetalert2";
 import AttributeModal from "../../components/AttributeModal";
 import Table from "../../components/Table";
 import useLanguage from "../../hooks/useLanguage";
+import useTitle from "../../hooks/useTitle";
 
 const AttributesList = () => {
+  useTitle("Attribute Library");
   const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");

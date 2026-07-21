@@ -6,8 +6,10 @@ import toast from "react-hot-toast";
 import Loading from "../../components/Loading";
 import Table from "../../components/Table";
 import useLanguage from "../../hooks/useLanguage";
+import useTitle from "../../hooks/useTitle";
 
 const CVsList = () => {
+  useTitle("CV Browser");
   const location = useLocation();
   return <CVsListInner key={location.search} />;
 };

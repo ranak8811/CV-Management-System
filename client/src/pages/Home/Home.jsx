@@ -3,8 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import api from "../../utils/api";
 import useAuth from "../../hooks/useAuth";
 import Loading from "../../components/Loading";
+import useTitle from "../../hooks/useTitle";
 
 const Home = () => {
+  useTitle("Home");
   const { user } = useAuth();
   const navigate = useNavigate();
 

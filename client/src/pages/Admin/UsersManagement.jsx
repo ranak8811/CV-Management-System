@@ -7,8 +7,10 @@ import Loading from "../../components/Loading";
 import useAuth from "../../hooks/useAuth";
 import Table from "../../components/Table";
 import useLanguage from "../../hooks/useLanguage";
+import useTitle from "../../hooks/useTitle";
 
 const UsersManagement = () => {
+  useTitle("Users Management");
   const { t } = useLanguage();
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();

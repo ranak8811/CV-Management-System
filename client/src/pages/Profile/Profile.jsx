@@ -8,8 +8,10 @@ import Loading from "../../components/Loading";
 import ProjectModal from "../../components/ProjectModal";
 import CreateCVModal from "../../components/CreateCVModal";
 import { marked } from "marked";
+import useTitle from "../../hooks/useTitle";
 
 const Profile = () => {
+  useTitle("My Profile");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 

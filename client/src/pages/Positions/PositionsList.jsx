@@ -8,8 +8,10 @@ import Loading from "../../components/Loading";
 import useAuth from "../../hooks/useAuth";
 import Table from "../../components/Table";
 import useLanguage from "../../hooks/useLanguage";
+import useTitle from "../../hooks/useTitle";
 
 const PositionsList = () => {
+  useTitle("Positions");
   const location = useLocation();
   return <PositionsListInner key={location.search} />;
 };

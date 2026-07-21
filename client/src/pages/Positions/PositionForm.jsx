@@ -4,10 +4,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../../utils/api";
 import toast from "react-hot-toast";
 import Loading from "../../components/Loading";
+import useTitle from "../../hooks/useTitle";
 
 const PositionForm = () => {
   const { id } = useParams();
   const isEditMode = !!id;
+  useTitle(isEditMode ? "Edit Position" : "Create Position");
 
   const { data: position, isLoading: isLoadingPosition } = useQuery({
     queryKey: ["position", id],

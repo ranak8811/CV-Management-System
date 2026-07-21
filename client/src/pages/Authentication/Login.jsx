@@ -8,8 +8,10 @@ import useTheme from "../../hooks/useTheme";
 import api from "../../utils/api";
 import toast from "react-hot-toast";
 import { GoogleLogin } from "@react-oauth/google";
+import useTitle from "../../hooks/useTitle";
 
 const Login = () => {
+  useTitle("Login");
   const { user, handleLoginSuccess } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { locale, switchLanguage } = useLanguage();

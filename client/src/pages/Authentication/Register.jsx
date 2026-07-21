@@ -7,8 +7,10 @@ import useTheme from "../../hooks/useTheme";
 import api from "../../utils/api";
 import toast from "react-hot-toast";
 import { useState } from "react";
+import useTitle from "../../hooks/useTitle";
 
 const Register = () => {
+  useTitle("Register");
   const { user, handleLoginSuccess } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { locale, switchLanguage } = useLanguage();
