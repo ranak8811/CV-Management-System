@@ -109,13 +109,13 @@ const Login = () => {
         </button>
         <button
           onClick={() => switchLanguage(locale === "en" ? "es" : "en")}
-          className="px-3 py-1 border border-base-300 rounded bg-base-100 hover:bg-base-300 text-xs font-bold uppercase"
+          className="px-3 py-1 border border-base-300 rounded bg-base-100 hover:bg-base-300 text-base-content text-xs font-bold uppercase"
         >
           {locale === "en" ? "ES" : "EN"}
         </button>
       </div>
 
-      <div className="border border-base-300 p-8 rounded-md bg-base-100 w-96 shadow-md flex flex-col gap-5">
+      <div className="border border-base-300 p-8 sm:p-10 rounded-2xl bg-base-100 w-full max-w-md shadow-lg flex flex-col gap-5 mx-4 my-8">
         <h2 className="text-xl font-bold text-center">Sign In</h2>
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
@@ -162,11 +162,11 @@ const Login = () => {
           <p className="text-[11px] text-gray-500 font-bold text-center mb-0.5">
             Quick Demo Login
           </p>
-          <div className="grid grid-cols-3 gap-1">
+          <div className="grid grid-cols-3 gap-2">
             <button
               type="button"
               onClick={() => handleQuickLogin("alex@gmail.com", "alex#123")}
-              className="btn btn-xs btn-outline btn-neutral text-[9px] uppercase"
+              className="btn btn-xs bg-base-200 border border-base-300 text-base-content hover:bg-base-300 text-[10px] font-bold uppercase transition-colors"
             >
               Candidate
             </button>
@@ -175,14 +175,14 @@ const Login = () => {
               onClick={() =>
                 handleQuickLogin("recruiter@gmail.com", "recruiter#123")
               }
-              className="btn btn-xs btn-outline btn-neutral text-[9px] uppercase"
+              className="btn btn-xs bg-base-200 border border-base-300 text-base-content hover:bg-base-300 text-[10px] font-bold uppercase transition-colors"
             >
               Recruiter
             </button>
             <button
               type="button"
               onClick={() => handleQuickLogin("admin@gmail.com", "admin#123")}
-              className="btn btn-xs btn-outline btn-neutral text-[9px] uppercase"
+              className="btn btn-xs bg-base-200 border border-base-300 text-base-content hover:bg-base-300 text-[10px] font-bold uppercase transition-colors"
             >
               Admin
             </button>

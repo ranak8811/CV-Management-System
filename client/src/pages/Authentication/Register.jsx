@@ -96,13 +96,13 @@ const Register = () => {
         </button>
         <button
           onClick={() => switchLanguage(locale === "en" ? "es" : "en")}
-          className="px-3 py-1 border border-base-300 rounded bg-base-100 hover:bg-base-300 text-xs font-bold uppercase"
+          className="px-3 py-1 border border-base-300 rounded bg-base-100 hover:bg-base-300 text-base-content text-xs font-bold uppercase"
         >
           {locale === "en" ? "ES" : "EN"}
         </button>
       </div>
 
-      <div className="border border-base-300 p-8 rounded-md bg-base-100 w-96 shadow-md flex flex-col gap-5">
+      <div className="border border-base-300 p-8 sm:p-10 rounded-2xl bg-base-100 w-full max-w-md shadow-lg flex flex-col gap-5 mx-4 my-8">
         <h2 className="text-xl font-bold text-center">Create Account</h2>
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">

@@ -34,7 +34,7 @@ const Navbar = () => {
   };
 
   const linkClass = ({ isActive }) =>
-    `px-3 py-1.5 rounded-md font-bold text-xs transition-all uppercase ${
+    `px-3.5 py-1.5 rounded-md font-bold text-xs transition-all uppercase whitespace-nowrap ${
       isActive
         ? "bg-primary text-primary-content shadow-sm"
         : "text-base-content hover:bg-base-300"
@@ -42,18 +42,18 @@ const Navbar = () => {
 
   return (
     <div className="bg-base-200 border-b border-base-300 sticky top-0 z-50">
-      <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between gap-6">
         <div className="flex items-center gap-6">
           <Link
             to="/"
-            className="text-sm font-extrabold text-primary tracking-wider uppercase"
+            className="text-sm font-extrabold text-primary tracking-wider uppercase flex-shrink-0"
           >
             CV Management
           </Link>
 
           <form
             onSubmit={handleSearchSubmit}
-            className="hidden md:flex items-center bg-base-100 border border-base-300 rounded px-2.5 py-1.5 h-8 w-60"
+            className="hidden md:flex items-center bg-base-100 border border-base-300 rounded px-3 py-1.5 h-8.5 w-64 lg:w-72"
           >
             <input
               type="text"
@@ -94,14 +94,14 @@ const Navbar = () => {
 
           <button
             onClick={toggleTheme}
-            className="btn btn-xs btn-outline btn-neutral"
+            className="px-2.5 py-1 border border-base-300 rounded bg-base-100 hover:bg-base-300 text-base-content text-xs transition-colors"
           >
             {theme === "light" ? "🌙" : "☀️"}
           </button>
 
           <button
             onClick={() => switchLanguage(locale === "en" ? "es" : "en")}
-            className="btn btn-xs btn-outline btn-neutral font-bold"
+            className="px-2.5 py-1 border border-base-300 rounded bg-base-100 hover:bg-base-300 text-base-content text-xs font-bold uppercase transition-colors"
           >
             {locale === "en" ? "ES" : "EN"}
           </button>
