@@ -23,10 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 
-# Project Specific files
-Instructions/*
-Necessary_Files/*
-
 # Prisma files
 server/src/generated/prisma
 
