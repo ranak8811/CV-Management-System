@@ -33,3 +33,5 @@ server/.env*
 # Project node module fils
 client/node_modules
 server/node_modules
+
+Test_files/

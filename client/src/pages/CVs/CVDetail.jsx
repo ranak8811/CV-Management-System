@@ -4,10 +4,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../../utils/api";
 import toast from "react-hot-toast";
 import Loading from "../../components/Loading";
-import useAuth from "../../hooks/useAuth";
 import { marked } from "marked";
-import html2pdf from "html2pdf.js";
+import html2canvas from "html2canvas-pro";
+import jsPDF from "jspdf";
 import useTitle from "../../hooks/useTitle";
+import useAuth from "../../hooks/useAuth";
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "";
@@ -240,56 +241,34 @@ const CVDetailInner = ({ cvData, candidateProjects }) => {
     }
   };
 
-  const downloadPDF = () => {
+  const downloadPDF = async () => {
     const element = document.getElementById("cv-pdf-content");
     if (!element) return;
 
-    const clone = element.cloneNode(true);
-    clone.style.position = "static";
-    clone.style.left = "auto";
-    clone.style.top = "auto";
+    toast.loading("Generating PDF download...", { id: "pdf-toast" });
 
-    document.body.appendChild(clone);
-
-    const origBodyBg = document.body.style.backgroundColor;
-    const origHtmlBg = document.documentElement.style.backgroundColor;
-    const origBodyColor = document.body.style.color;
-    const origHtmlColor = document.documentElement.style.color;
-
-    document.body.style.backgroundColor = "#ffffff";
-    document.documentElement.style.backgroundColor = "#ffffff";
-    document.body.style.color = "#111827";
-    document.documentElement.style.color = "#111827";
-
-    const opt = {
-      margin: 0.5,
-      filename: `${cv.name.replace(/\s+/g, "_")}.pdf`,
-      image: { type: "jpeg", quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
-    };
-
-    html2pdf()
-      .set(opt)
-      .from(clone)
-      .save()
-      .then(() => {
-        document.body.removeChild(clone);
-        document.body.style.backgroundColor = origBodyBg;
-        document.documentElement.style.backgroundColor = origHtmlBg;
-        document.body.style.color = origBodyColor;
-        document.documentElement.style.color = origHtmlColor;
-      })
-      .catch((err) => {
-        console.error("PDF generation failed:", err);
-        if (document.body.contains(clone)) {
-          document.body.removeChild(clone);
-        }
-        document.body.style.backgroundColor = origBodyBg;
-        document.documentElement.style.backgroundColor = origHtmlBg;
-        document.body.style.color = origBodyColor;
-        document.documentElement.style.color = origHtmlColor;
+    try {
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
       });
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.98);
+      const pdf = new jsPDF("p", "pt", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
+      const filename = `${cv ? cv.name.replace(/\s+/g, "_") : "CV_Profile"}.pdf`;
+      pdf.save(filename);
+      toast.success("PDF downloaded successfully!", { id: "pdf-toast" });
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+      toast.error("Failed to generate PDF. Please try again.", {
+        id: "pdf-toast",
+      });
+    }
   };
 
   const handleLikeToggle = async () => {
