@@ -10,7 +10,7 @@ The application enables recruiters to build dynamic position templates with cust
 
 ## 🔗 Project Links
 
-- **Live Demo**: [https://cv-management-system-client.onrender.com](https://cv-management-system-client.onrender.com)
+- **Live Demo (Deployed on Render)**: [https://cv-management-system-client.onrender.com](https://cv-management-system-client.onrender.com)
 - **GitHub Repository**: [https://github.com/ranak8811/CV-Management-System.git](https://github.com/ranak8811/CV-Management-System.git)
 
 > ⚡ **Important Note on Live Deployment**:
