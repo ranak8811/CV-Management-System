@@ -251,7 +251,29 @@ const CVDetailInner = ({ cvData, candidateProjects }) => {
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
+        allowTaint: true,
         backgroundColor: "#ffffff",
+        windowWidth: 1200,
+        onclone: (clonedDoc) => {
+          try {
+            Array.from(document.styleSheets).forEach((sheet) => {
+              try {
+                const cssRules = Array.from(sheet.cssRules || sheet.rules || [])
+                  .map((rule) => rule.cssText)
+                  .join("\n");
+                if (cssRules) {
+                  const style = clonedDoc.createElement("style");
+                  style.textContent = cssRules;
+                  clonedDoc.head.appendChild(style);
+                }
+              } catch (e) {
+                console.log(e);
+              }
+            });
+          } catch (e) {
+            console.error("Stylesheet copy error:", e);
+          }
+        },
       });
 
       const imgData = canvas.toDataURL("image/jpeg", 0.98);
