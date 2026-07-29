@@ -13,6 +13,7 @@ import cvRoutes from "./routes/cvRoutes.js";
 import discussionRoutes from "./routes/discussionRoutes.js";
 import publicRoutes from "./routes/publicRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import salesforceRoutes from "./routes/salesforceRoutes.js";
 
 dotenv.config();
 
@@ -57,6 +58,7 @@ app.use("/api/cvs", cvRoutes);
 app.use("/api/discussions", discussionRoutes);
 app.use("/api/public", publicRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/salesforce", salesforceRoutes);
 
 io.on("connection", (socket) => {
   socket.on("joinPosition", (positionId) => {
