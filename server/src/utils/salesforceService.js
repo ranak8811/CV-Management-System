@@ -1,50 +1,91 @@
 const getSalesforceAccessToken = async () => {
-  const clientId = process.env.SALESFORCE_CLIENT_ID || process.env.Consumer_Key;
-  const clientSecret =
+  const rawClientId = process.env.SALESFORCE_CLIENT_ID || process.env.Consumer_Key;
+  const rawClientSecret =
     process.env.SALESFORCE_CLIENT_SECRET || process.env.Consumer_Secret;
-  const username = process.env.SALESFORCE_USERNAME;
-  const password = process.env.SALESFORCE_PASSWORD;
-  const securityToken = process.env.SALESFORCE_SECURITY_TOKEN || "";
-  const loginUrl =
-    process.env.SALESFORCE_LOGIN_URL || "https://login.salesforce.com";
+  const rawUsername = process.env.SALESFORCE_USERNAME;
+  const rawPassword = process.env.SALESFORCE_PASSWORD;
+  const rawSecurityToken = process.env.SALESFORCE_SECURITY_TOKEN || "";
+  const loginUrl = (process.env.SALESFORCE_LOGIN_URL || "https://login.salesforce.com").trim();
 
-  if (!clientId || !clientSecret || !username || !password) {
+  const clientId = rawClientId ? rawClientId.trim() : "";
+  const clientSecret = rawClientSecret ? rawClientSecret.trim() : "";
+  const username = rawUsername ? rawUsername.trim() : "";
+  const password = rawPassword ? rawPassword.trim() : "";
+  const securityToken = rawSecurityToken ? rawSecurityToken.trim() : "";
+
+  if (!clientId || !clientSecret) {
     throw new Error(
-      "Salesforce credentials (Consumer_Key/CLIENT_ID, Consumer_Secret/CLIENT_SECRET, SALESFORCE_USERNAME, SALESFORCE_PASSWORD) are missing in server/.env",
+      "Salesforce credentials (SALESFORCE_CLIENT_ID/Consumer_Key, SALESFORCE_CLIENT_SECRET/Consumer_Secret) are missing in server/.env",
     );
   }
 
-  const fullPassword = `${password}${securityToken}`;
+  console.log(`[Salesforce Auth] Attempting token request for username: "${username}"...`);
+  console.log(`[Salesforce Auth Debug] Password length: ${password.length}, SecurityToken length: ${securityToken.length}`);
 
-  const params = new URLSearchParams({
-    grant_type: "password",
+  // Attempt 1: Password Grant Flow
+  if (username && password) {
+    const fullPassword = `${password}${securityToken}`;
+
+    const params = new URLSearchParams({
+      grant_type: "password",
+      client_id: clientId,
+      client_secret: clientSecret,
+      username: username,
+      password: fullPassword,
+    });
+
+    const response = await fetch(`${loginUrl}/services/oauth2/token`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      console.log("[Salesforce Auth Success] OAuth Password Flow succeeded.");
+      return {
+        accessToken: data.access_token,
+        instanceUrl: data.instance_url,
+      };
+    }
+
+    console.warn("[Salesforce Auth Password Flow Failed]:", data);
+  }
+
+  // Attempt 2: Client Credentials Grant Flow (Modern Salesforce Standard)
+  console.log("[Salesforce Auth] Attempting Client Credentials Flow...");
+  const ccParams = new URLSearchParams({
+    grant_type: "client_credentials",
     client_id: clientId,
     client_secret: clientSecret,
-    username: username,
-    password: fullPassword,
   });
 
-  const response = await fetch(`${loginUrl}/services/oauth2/token`, {
+  const ccResponse = await fetch(`${loginUrl}/services/oauth2/token`, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
     },
-    body: params.toString(),
+    body: ccParams.toString(),
   });
 
-  const data = await response.json();
+  const ccData = await ccResponse.json();
 
-  if (!response.ok) {
-    console.error("Salesforce Token Error Response:", data);
-    throw new Error(
-      data.error_description || "Failed to authenticate with Salesforce API",
-    );
+  if (ccResponse.ok) {
+    console.log("[Salesforce Auth Success] Client Credentials Flow succeeded.");
+    return {
+      accessToken: ccData.access_token,
+      instanceUrl: ccData.instance_url,
+    };
   }
 
-  return {
-    accessToken: data.access_token,
-    instanceUrl: data.instance_url,
-  };
+  console.error("[Salesforce Auth Client Credentials Flow Failed]:", ccData);
+
+  throw new Error(
+    "Salesforce authentication failed (Password & Client Credentials flows). Please verify your password, security token, or Salesforce My Domain login URL.",
+  );
 };
 
 const createSalesforceAccount = async (

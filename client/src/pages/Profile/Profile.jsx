@@ -7,6 +7,7 @@ import Swal from "sweetalert2";
 import Loading from "../../components/Loading";
 import ProjectModal from "../../components/ProjectModal";
 import CreateCVModal from "../../components/CreateCVModal";
+import SalesforceSyncModal from "../../components/SalesforceSyncModal";
 import { marked } from "marked";
 import useTitle from "../../hooks/useTitle";
 
@@ -19,6 +20,7 @@ const Profile = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [unsavedChanges, setUnsavedChanges] = useState({});
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isSalesforceModalOpen, setIsSalesforceModalOpen] = useState(false);
 
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [projectToEdit, setProjectToEdit] = useState(null);
@@ -530,18 +532,27 @@ const Profile = () => {
 
   return (
     <div className="p-4 font-sans bg-base-100 text-base-content min-h-screen max-w-4xl mx-auto flex flex-col gap-8">
-      <div className="flex justify-between items-center border-b border-base-300 pb-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-base-300 pb-4">
         <div>
           <h2 className="text-2xl font-bold">My Personal Profile</h2>
           <p className="text-sm text-gray-500 mt-1">
             Keep your profile details and attribute records up to date.
           </p>
         </div>
-        {saving && (
-          <span className="badge badge-primary py-3">
-            Auto-saving changes...
-          </span>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsSalesforceModalOpen(true)}
+            className="btn btn-sm btn-outline btn-primary flex items-center gap-1.5"
+          >
+            <span>☁️</span> Sync to Salesforce CRM
+          </button>
+          {saving && (
+            <span className="badge badge-primary py-3">
+              Auto-saving changes...
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="border border-base-300 p-6 rounded-lg bg-base-200 flex flex-col gap-4">
@@ -889,6 +900,12 @@ const Profile = () => {
         isOpen={isCVModalOpen}
         onClose={() => setIsCVModalOpen(false)}
         onSave={handleCVGenerated}
+      />
+
+      <SalesforceSyncModal
+        isOpen={isSalesforceModalOpen}
+        onClose={() => setIsSalesforceModalOpen(false)}
+        user={profileUser}
       />
     </div>
   );
