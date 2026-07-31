@@ -1,11 +1,14 @@
 const getSalesforceAccessToken = async () => {
-  const rawClientId = process.env.SALESFORCE_CLIENT_ID || process.env.Consumer_Key;
+  const rawClientId =
+    process.env.SALESFORCE_CLIENT_ID || process.env.Consumer_Key;
   const rawClientSecret =
     process.env.SALESFORCE_CLIENT_SECRET || process.env.Consumer_Secret;
   const rawUsername = process.env.SALESFORCE_USERNAME;
   const rawPassword = process.env.SALESFORCE_PASSWORD;
   const rawSecurityToken = process.env.SALESFORCE_SECURITY_TOKEN || "";
-  const loginUrl = (process.env.SALESFORCE_LOGIN_URL || "https://login.salesforce.com").trim();
+  const loginUrl = (
+    process.env.SALESFORCE_LOGIN_URL || "https://login.salesforce.com"
+  ).trim();
 
   const clientId = rawClientId ? rawClientId.trim() : "";
   const clientSecret = rawClientSecret ? rawClientSecret.trim() : "";
@@ -19,10 +22,13 @@ const getSalesforceAccessToken = async () => {
     );
   }
 
-  console.log(`[Salesforce Auth] Attempting token request for username: "${username}"...`);
-  console.log(`[Salesforce Auth Debug] Password length: ${password.length}, SecurityToken length: ${securityToken.length}`);
+  console.log(
+    `[Salesforce Auth] Attempting token request for username: "${username}"...`,
+  );
+  console.log(
+    `[Salesforce Auth Debug] Password length: ${password.length}, SecurityToken length: ${securityToken.length}`,
+  );
 
-  // Attempt 1: Password Grant Flow
   if (username && password) {
     const fullPassword = `${password}${securityToken}`;
 
@@ -55,7 +61,6 @@ const getSalesforceAccessToken = async () => {
     console.warn("[Salesforce Auth Password Flow Failed]:", data);
   }
 
-  // Attempt 2: Client Credentials Grant Flow (Modern Salesforce Standard)
   console.log("[Salesforce Auth] Attempting Client Credentials Flow...");
   const ccParams = new URLSearchParams({
     grant_type: "client_credentials",
