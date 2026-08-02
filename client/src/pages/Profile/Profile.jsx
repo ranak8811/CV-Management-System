@@ -13,8 +13,8 @@ import useTitle from "../../hooks/useTitle";
 
 const Profile = () => {
   useTitle("My Profile");
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
