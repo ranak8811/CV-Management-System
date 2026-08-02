@@ -80,7 +80,7 @@ const PositionFormInner = ({ position }) => {
   const { data: libraryAttributes = [] } = useQuery({
     queryKey: ["attributes"],
     queryFn: async () => {
-      const res = await api.get("/api/attributes");
+      const res = await api.get("/api/attributes?all=true");
       return res.data.success ? res.data.data : [];
     },
   });

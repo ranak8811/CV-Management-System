@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Odoo ERP Integration Module</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+      body {
+        background-color: #f3f4f6;
+        color: #1f2937;
+        padding: 20px;
+      }
+      .container {
+        max-width: 900px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      .header {
+        background-color: #714b67;
+        color: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .card {
+        background-color: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 5px;
+        color: #374151;
+      }
+      input,
+      textarea {
+        width: 100%;
+        padding: 8px 12px;
+        font-size: 14px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        outline: none;
+      }
+      input:focus,
+      textarea:focus {
+        border-color: #714b67;
+      }
+      button {
+        background-color: #00a09d;
+        color: white;
+        border: none;
+        padding: 9px 16px;
+        font-size: 14px;
+        font-weight: 600;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #008784;
+      }
+      .btn-secondary {
+        background-color: #714b67;
+      }
+      .btn-secondary:hover {
+        background-color: #5a3b52;
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .status {
+        margin-top: 10px;
+        padding: 10px;
+        border-radius: 6px;
+        font-size: 13px;
+        display: none;
+      }
+      .status-success {
+        background-color: #def7ec;
+        color: #03543f;
+        border: 1px solid #bcf0da;
+      }
+      .status-error {
+        background-color: #fde8e8;
+        color: #9b1c1c;
+        border: 1px solid #fbd5d5;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 15px;
+      }
+      .stat-box {
+        background-color: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 12px;
+        text-align: center;
+      }
+      .stat-val {
+        font-size: 20px;
+        font-weight: 700;
+        color: #714b67;
+        margin-top: 4px;
+      }
+      .tag {
+        display: inline-block;
+        background-color: #e5e7eb;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        margin-right: 5px;
+        margin-top: 5px;
+      }
+      .hidden {
+        display: none;
+      }
+      .section-title {
+        font-size: 16px;
+        font-weight: 700;
+        margin-bottom: 12px;
+        color: #111827;
+        border-bottom: 1px solid #e5e7eb;
+        padding-bottom: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h2>Odoo ERP Integration</h2>
+        <span>Read-Only Viewer & Export Module</span>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Import & View Aggregated Data</div>
+        <div class="row">
+          <input
+            type="text"
+            id="tokenInput"
+            placeholder="Enter Odoo API Token (e.g. odoo_tok_...)"
+          />
+          <button id="fetchBtn" onclick="fetchAggregatedData()">
+            Import Data
+          </button>
+        </div>
+        <div id="fetchStatus" class="status"></div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Create Item in Odoo & Export to CV App</div>
+        <form id="createForm" onsubmit="handleCreateItem(event)">
+          <div class="form-group">
+            <label>Position Title</label>
+            <input
+              type="text"
+              id="itemTitle"
+              placeholder="e.g. DevOps Engineer"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label>Description</label>
+            <textarea
+              id="itemDesc"
+              rows="3"
+              placeholder="Brief role description"
+              required
+            ></textarea>
+          </div>
+          <div class="row">
+            <div style="flex: 1">
+              <label>Project Tags (comma separated)</label>
+              <input
+                type="text"
+                id="itemTags"
+                placeholder="Docker, AWS, CI/CD"
+              />
+            </div>
+            <div style="width: 150px">
+              <label>Max Projects</label>
+              <input
+                type="number"
+                id="itemMaxProjects"
+                value="3"
+                min="1"
+                max="10"
+              />
+            </div>
+          </div>
+          <div style="margin-top: 15px">
+            <button type="submit" class="btn-secondary" id="createBtn">
+              Create & Export to CV App
+            </button>
+          </div>
+        </form>
+        <div id="createStatus" class="status"></div>
+      </div>
+
+      <div id="resultCard" class="card hidden">
+        <div class="section-title" id="resTitle">Position Title</div>
+        <p
+          id="resDesc"
+          style="font-size: 13px; color: #4b5563; margin-bottom: 15px"
+        ></p>
+
+        <div class="grid" style="margin-bottom: 20px">
+          <div class="stat-box">
+            <div style="font-size: 12px; color: #6b7280">
+              Total CV Submissions
+            </div>
+            <div class="stat-val" id="resCVCount">0</div>
+          </div>
+          <div class="stat-box">
+            <div style="font-size: 12px; color: #6b7280">
+              Total Analyzed Fields
+            </div>
+            <div class="stat-val" id="resFieldCount">0</div>
+          </div>
+        </div>
+
+        <div class="section-title">Aggregated Results & Statistics</div>
+        <div id="statsGrid" class="grid"></div>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE = "http://localhost:5000/api/public/odoo";
+
+      async function fetchAggregatedData() {
+        const token = document.getElementById("tokenInput").value.trim();
+        const statusDiv = document.getElementById("fetchStatus");
+        const resultCard = document.getElementById("resultCard");
+
+        if (!token) {
+          showStatus(statusDiv, "Please enter an API Token", false);
+          return;
+        }
+
+        showStatus(statusDiv, "Fetching data...", true);
+
+        try {
+          const res = await fetch(
+            `${API_BASE}/export?token=${encodeURIComponent(token)}`,
+          );
+          const json = await res.json();
+
+          if (!res.ok || !json.success) {
+            throw new Error(json.message || "Failed to fetch data");
+          }
+
+          renderResults(json.data);
+          showStatus(statusDiv, "Data imported successfully!", true);
+        } catch (err) {
+          showStatus(statusDiv, err.message, false);
+          resultCard.classList.add("hidden");
+        }
+      }
+
+      async function handleCreateItem(e) {
+        e.preventDefault();
+        const statusDiv = document.getElementById("createStatus");
+        const title = document.getElementById("itemTitle").value.trim();
+        const description = document.getElementById("itemDesc").value.trim();
+        const projectTags = document.getElementById("itemTags").value.trim();
+        const maxProjects = document.getElementById("itemMaxProjects").value;
+
+        showStatus(statusDiv, "Exporting item to CV App...", true);
+
+        try {
+          const res = await fetch(`${API_BASE}/import-item`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title,
+              description,
+              projectTags,
+              maxProjects,
+            }),
+          });
+          const json = await res.json();
+
+          if (!res.ok || !json.success) {
+            throw new Error(json.message || "Failed to export item");
+          }
+
+          showStatus(
+            statusDiv,
+            `Item created in CV App! Token: ${json.data.odooToken}`,
+            true,
+          );
+          document.getElementById("tokenInput").value = json.data.odooToken;
+          document.getElementById("createForm").reset();
+        } catch (err) {
+          showStatus(statusDiv, err.message, false);
+        }
+      }
+
+      function renderResults(data) {
+        const resultCard = document.getElementById("resultCard");
+        document.getElementById("resTitle").innerText =
+          data.inventoryTitle || "Untitled";
+        document.getElementById("resDesc").innerText = data.description || "";
+        document.getElementById("resCVCount").innerText =
+          data.totalSubmittedCVs || 0;
+        document.getElementById("resFieldCount").innerText =
+          data.fields?.length || 0;
+
+        const grid = document.getElementById("statsGrid");
+        grid.innerHTML = "";
+
+        const results = data.aggregatedResults || {};
+        Object.keys(results).forEach((field) => {
+          const item = results[field];
+          const box = document.createElement("div");
+          box.className = "stat-box";
+
+          let html = `<div style="font-weight: 600; font-size: 14px; margin-bottom: 8px;">${field} (${item.type})</div>`;
+          if (item.type === "NUMERIC") {
+            html += `
+            <div style="font-size: 12px; color: #4b5563;">
+              <div>Average: <strong>${item.average}</strong></div>
+              <div>Min: <strong>${item.min}</strong> | Max: <strong>${item.max}</strong></div>
+            </div>
+          `;
+          } else if (item.type === "BOOLEAN") {
+            html += `
+            <div style="font-size: 12px; color: #4b5563;">
+              <div>Yes: <strong>${item.trueCount}</strong> | No: <strong>${item.falseCount}</strong></div>
+            </div>
+          `;
+          } else {
+            const tags = (item.mostPopular || [])
+              .map((val) => `<span class="tag">${val}</span>`)
+              .join("");
+            html += `<div style="margin-top: 5px;">${tags || "No responses"}</div>`;
+          }
+
+          box.innerHTML = html;
+          grid.appendChild(box);
+        });
+
+        resultCard.classList.remove("hidden");
+      }
+
+      function showStatus(el, message, isSuccess) {
+        el.style.display = "block";
+        el.className = `status ${isSuccess ? "status-success" : "status-error"}`;
+        el.innerText = message;
+      }
+    </script>
+  </body>
+</html>

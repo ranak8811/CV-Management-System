@@ -176,4 +176,45 @@ const exportOdooData = async (req, res) => {
   }
 };
 
-export { generateOdooToken, exportOdooData };
+const importItemFromOdoo = async (req, res) => {
+  const { title, description, projectTags, maxProjects } = req.body;
+
+  if (!title || !description) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Title and description are required" });
+  }
+
+  try {
+    const cryptoToken = `odoo_tok_${crypto.randomBytes(16).toString("hex")}`;
+    const tagsArray = Array.isArray(projectTags)
+      ? projectTags
+      : typeof projectTags === "string"
+      ? projectTags.split(",").map((t) => t.trim()).filter(Boolean)
+      : [];
+
+    const newPosition = await prisma.position.create({
+      data: {
+        title,
+        description,
+        projectTags: tagsArray,
+        maxProjects: Number(maxProjects) || 3,
+        odooToken: cryptoToken,
+        isPublic: true,
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Item created in CV System from Odoo successfully",
+      data: newPosition,
+    });
+  } catch (error) {
+    console.error("Import item from Odoo error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to create item from Odoo" });
+  }
+};
+
+export { generateOdooToken, exportOdooData, importItemFromOdoo };

@@ -54,10 +54,7 @@ const createAttribute = async (req, res) => {
 };
 
 const getAttributes = async (req, res) => {
-  const { search, category } = req.query;
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10;
-  const skip = (page - 1) * limit;
+  const { search, category, all } = req.query;
 
   try {
     const whereClause = {};
@@ -72,6 +69,19 @@ const getAttributes = async (req, res) => {
     if (category) {
       whereClause.category = category;
     }
+
+    if (all === "true" || !req.query.limit) {
+      const attributes = await prisma.attribute.findMany({
+        where: whereClause,
+        include: { options: true },
+        orderBy: { name: "asc" },
+      });
+      return res.json({ success: true, data: attributes });
+    }
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
     const totalItems = await prisma.attribute.count({ where: whereClause });
     const totalPages = Math.ceil(totalItems / limit);

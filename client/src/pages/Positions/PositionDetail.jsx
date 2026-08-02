@@ -39,6 +39,24 @@ const PositionDetail = () => {
 
   useTitle(position ? position.title : "Position Details");
 
+  const generateOdooTokenMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.post(`/api/odoo/positions/${id}/odoo-token`);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["position", id] });
+      navigator.clipboard.writeText(data.odooToken);
+      toast.success("Odoo API Token generated & copied to clipboard!");
+    },
+    onError: (err) => {
+      console.error(err);
+      toast.error(
+        err.response?.data?.message || "Failed to generate Odoo API Token",
+      );
+    },
+  });
+
   const { data: posts = [] } = useQuery({
     queryKey: ["discussions", id],
     queryFn: async () => {
@@ -265,15 +283,53 @@ const PositionDetail = () => {
   return (
     <div className="p-4 font-sans bg-base-100 text-base-content min-h-screen max-w-4xl mx-auto flex flex-col gap-6">
       <div className="border-b border-base-300 pb-4">
-        <div className="flex justify-between items-start">
-          <h2 className="text-2xl font-bold text-primary">{position.title}</h2>
-          <span
-            className={`badge ${position.isPublic ? "badge-success" : "badge-warning"} badge-md`}
-          >
-            {position.isPublic ? "Public Position" : "Restricted Access"}
-          </span>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div>
+            <h2 className="text-2xl font-bold text-primary">{position.title}</h2>
+            <p className="text-sm text-gray-500 mt-1">{position.description}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {isRecruiterOrAdmin && (
+              <button
+                type="button"
+                onClick={() => generateOdooTokenMutation.mutate()}
+                disabled={generateOdooTokenMutation.isPending}
+                className="btn btn-xs btn-outline btn-secondary flex items-center gap-1"
+                title="Generate API Token for Odoo ERP Integration"
+              >
+                <span>🔑</span>{" "}
+                {position.odooToken ? "Copy Odoo Token" : "Generate Odoo Token"}
+              </button>
+            )}
+            <span
+              className={`badge ${position.isPublic ? "badge-success" : "badge-warning"} badge-md`}
+            >
+              {position.isPublic ? "Public Position" : "Restricted Access"}
+            </span>
+          </div>
         </div>
-        <p className="text-sm text-gray-500 mt-1">{position.description}</p>
+
+        {position.odooToken && (
+          <div className="mt-3 p-2.5 bg-base-200 border border-base-300 rounded text-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-secondary flex items-center gap-1">
+                <span>🔑</span> Odoo API Token:
+              </span>
+              <code className="bg-base-100 px-2 py-0.5 rounded border border-base-300 text-xs font-mono select-all">
+                {position.odooToken}
+              </code>
+            </div>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(position.odooToken);
+                toast.success("Odoo API Token copied to clipboard!");
+              }}
+              className="btn btn-xs btn-ghost text-primary"
+            >
+              📋 Copy Token
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="tabs tabs-boxed bg-base-200">
