@@ -105,6 +105,7 @@ const createSalesforceAccount = async (
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
+        "Sforce-Duplicate-Rule-Header": "allowSave=true",
       },
       body: JSON.stringify({
         Name: accountData.companyName || "Candidate Company",
@@ -142,6 +143,7 @@ const createSalesforceContact = async (
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
+        "Sforce-Duplicate-Rule-Header": "allowSave=true",
       },
       body: JSON.stringify({
         FirstName: firstName,

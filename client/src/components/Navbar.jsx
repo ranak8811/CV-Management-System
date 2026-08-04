@@ -5,12 +5,15 @@ import useTheme from "../hooks/useTheme";
 import useLanguage from "../hooks/useLanguage";
 import toast from "react-hot-toast";
 
+import SupportTicketModal from "./SupportTicketModal";
+
 const Navbar = () => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { locale, switchLanguage } = useLanguage();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -92,6 +95,16 @@ const Navbar = () => {
             )}
           </nav>
 
+          {user && (
+            <button
+              onClick={() => setIsSupportModalOpen(true)}
+              className="btn btn-xs btn-outline btn-accent flex items-center gap-1"
+              title="Create Support Ticket (Power Automate)"
+            >
+              <span>🎧</span> Help
+            </button>
+          )}
+
           <button
             onClick={toggleTheme}
             className="px-2.5 py-1 border border-base-300 rounded bg-base-100 hover:bg-base-300 text-base-content text-xs transition-colors"
@@ -139,6 +152,11 @@ const Navbar = () => {
           )}
         </div>
       </div>
+
+      <SupportTicketModal
+        isOpen={isSupportModalOpen}
+        onClose={() => setIsSupportModalOpen(false)}
+      />
     </div>
   );
 };

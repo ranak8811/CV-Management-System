@@ -15,6 +15,7 @@ import publicRoutes from "./routes/publicRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import salesforceRoutes from "./routes/salesforceRoutes.js";
 import odooRoutes from "./routes/odooRoutes.js";
+import supportRoutes from "./routes/supportRoutes.js";
 
 dotenv.config();
 
@@ -62,6 +63,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/salesforce", salesforceRoutes);
 app.use("/api/odoo", odooRoutes);
 app.use("/api/public/odoo", odooRoutes);
+app.use("/api/support", supportRoutes);
 
 io.on("connection", (socket) => {
   socket.on("joinPosition", (positionId) => {
